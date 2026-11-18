@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { CATEGORIES, CATEGORY_META, TIER_LABEL, TIERS, TOPUP_PACKS, VIDEO_RESOLUTION, creditsToRupiah, type Category } from '@atomo/credits';
-import { fmt, rupiah } from '@/components/ui';
+import { fmt, rupiah } from '@/lib/format';
 import { AccountPage, loadAccount } from '@/lib/account';
 import { env } from '@/lib/env';
 import { TopupButtons } from './topup';

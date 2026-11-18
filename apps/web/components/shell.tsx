@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { signOut } from '@/app/actions';
 import { Logo } from './logo';
 import { StageNav } from './stage-nav';
-import { fmt } from './ui';
+import { fmt } from '@/lib/format';
 import type { StageId, StageStatus } from '@/lib/stages';
 
 export interface ShellProps {
