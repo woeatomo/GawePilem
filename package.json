@@ -1,0 +1,28 @@
+{
+  "name": "atomo-film-studio",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @atomo/web --filter @atomo/worker dev",
+    "build": "pnpm --filter @atomo/web build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "bash supabase/tests/run.sh",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.0",
+    "prettier": "^3.6.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^4.0.0"
+  },
+  "type": "module"
+}
