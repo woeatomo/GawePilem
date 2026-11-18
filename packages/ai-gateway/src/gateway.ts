@@ -185,13 +185,15 @@ export class AIGateway {
           return { s, it, first };
         });
         resolveMeta(m);
-        finalResult = started.s.final();
         if (!started.first.done) yield started.first.value;
         for (;;) {
           const n = await started.it.next();
           if (n.done) break;
           yield n.value;
         }
+        // final() baru dipanggil setelah stream habis: memanggilnya lebih awal membuat dua
+        // pembaca berebut iterator yang sama sehingga sebagian potongan teks hilang.
+        finalResult = started.s.final();
       } catch (e) {
         const err = toProviderError(setting.provider, e);
         rejectMeta(err);

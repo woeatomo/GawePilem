@@ -48,6 +48,7 @@ pnpm install
 pnpm dev                       # web (Next.js :3000) + worker (BullMQ)
 pnpm test                      # Vitest semua paket (render FFmpeg nyata ikut dites bila ffmpeg ada)
 pnpm test:db                   # migrasi + RLS + RPC kredit di Postgres sementara (tanpa Docker)
+pnpm test:e2e                  # alur utama via Playwright; butuh supabase start, redis, web (build+start), worker, AI_MOCK=1
 pnpm lint && pnpm typecheck
 pnpm build                     # build web
 supabase start                 # Supabase lokal (Docker)
@@ -190,7 +191,8 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [x] Adapter VO (ElevenLabs) dengan voice lock per karakter
 - [x] Timeline JSON + rakit otomatis + render FFmpeg + export MP4
 - [x] Publish manual ke YouTube
-- [ ] Uji end-to-end dengan Supabase lokal + key provider asli (belum dijalankan: lihat catatan verifikasi)
+- [x] Uji end-to-end dengan Supabase lokal (Docker) + mode mock: `pnpm test:e2e` (daftar → render MP4 → edit AI)
+- [ ] Uji dengan key provider asli (OpenCode Zen, fal, ElevenLabs, YouTube, Midtrans)
 - [ ] Verifikasi endpoint OpenCode Zen per model (`GET /models`), ToS reseller, dan field `status.containsSyntheticMedia` YouTube di docs terbaru
 
 ### Fase 2: Beta

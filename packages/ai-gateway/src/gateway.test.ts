@@ -138,6 +138,18 @@ describe('retry, fallback, rate limit', () => {
   });
 });
 
+describe('stream lewat gateway', () => {
+  it('tidak ada potongan teks yang hilang (regresi: final() berebut iterator)', async () => {
+    const text = 'satu dua tiga empat lima enam tujuh delapan sembilan sepuluh';
+    const gw = new AIGateway({ platformKeys: {}, mock: true, mockResponder: () => text });
+    const s = gw.textStream(setting({ provider: 'mock' }), { messages: [] });
+    let got = '';
+    for await (const d of s) got += d;
+    expect(got).toBe(text);
+    expect((await s.final()).text).toBe(text);
+  });
+});
+
 describe('BYOK & key', () => {
   it('mode BYOK memakai key user yang didekripsi di server', async () => {
     const { f, calls } = fakeFetch(() => chatOk('ok'));

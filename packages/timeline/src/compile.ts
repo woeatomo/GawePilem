@@ -78,7 +78,7 @@ export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand
     const len = c.out - c.in;
     filters.push(
       `[${idx}:v]tpad=stop_mode=clone:stop_duration=${f3(len + 1)},trim=start=${f3(c.in)}:duration=${f3(len)},setpts=PTS-STARTPTS,` +
-        `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=${t.fps},format=yuv420p[v${i}]`,
+        `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=${t.fps},format=yuv420p,settb=AVTB[v${i}]`,
     );
   });
   let vLabel = 'v0';
@@ -87,9 +87,10 @@ export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand
     const out = `vx${i}`;
     if (c.transition === 'fade' || c.transition === 'dip') {
       const d = overlapFor(t.tracks.video, i);
-      filters.push(`[${vLabel}][v${i}]xfade=transition=${c.transition === 'dip' ? 'fadeblack' : 'fade'}:duration=${f3(d)}:offset=${f3(starts[i]!)}[${out}]`);
+      filters.push(`[${vLabel}][v${i}]xfade=transition=${c.transition === 'dip' ? 'fadeblack' : 'fade'}:duration=${f3(d)}:offset=${f3(starts[i]!)},settb=AVTB[${out}]`);
     } else {
-      filters.push(`[${vLabel}][v${i}]concat=n=2:v=1:a=0[${out}]`);
+      // concat bisa mengubah timebase; samakan lagi supaya xfade berikutnya tidak gagal.
+      filters.push(`[${vLabel}][v${i}]concat=n=2:v=1:a=0,settb=AVTB[${out}]`);
     }
     vLabel = out;
   }

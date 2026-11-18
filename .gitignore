@@ -13,3 +13,5 @@ supabase/.temp
 test-results
 playwright-report
 supabase/.branches
+e2e/.out
+dump.rdb

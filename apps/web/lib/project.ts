@@ -47,7 +47,7 @@ export async function loadProject(db: DB, projectId: string, epNumber = 1): Prom
   const [{ data: bible }, { data: episodes }, { data: characters }] = await Promise.all([
     db.from('series_bible').select('*').eq('project_id', projectId).maybeSingle(),
     db.from('episodes').select('*').eq('project_id', projectId).order('number'),
-    db.from('characters').select('*').eq('project_id', projectId).order('created_at'),
+    db.from('characters').select('*').eq('project_id', projectId).order('created_at').order('name'),
   ]);
   const episode = episodes?.find((e) => e.number === epNumber) ?? episodes?.[0];
   if (!episode) notFound();

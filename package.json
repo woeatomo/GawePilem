@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "bash supabase/tests/run.sh",
+    "test:e2e": "bash e2e/run.sh",
     "lint": "eslint .",
     "typecheck": "pnpm -r --parallel typecheck",
     "format": "prettier --write ."

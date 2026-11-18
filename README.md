@@ -39,6 +39,7 @@ Dengan `AI_MOCK=1` dan `PAYMENTS_SANDBOX=1`, seluruh alur bisa dicoba tanpa biay
 ```bash
 pnpm test            # Vitest: kredit, gateway, prompt, timeline (termasuk render FFmpeg nyata), publisher, web
 pnpm test:db         # migrasi + RLS + RPC kredit di Postgres sementara (tanpa Docker), termasuk uji konkurensi
+pnpm test:e2e        # alur utama di browser (Playwright) terhadap stack lokal dengan AI_MOCK=1
 pnpm lint && pnpm typecheck
 pnpm build
 bash scripts/gen-db-types.sh   # regenerate packages/db/src/database.types.ts dari migrasi

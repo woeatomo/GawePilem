@@ -161,4 +161,22 @@ describe.skipIf(!hasFfmpeg)('render FFmpeg sungguhan', () => {
     expect(probe.streams.some((s: { codec_type: string }) => s.codec_type === 'audio')).toBe(true);
     expect(Math.abs(Number(probe.format.duration) - 5)).toBeLessThan(0.15);
   }, 60_000);
+
+  it('regresi: cut → cut → dip (xfade setelah rangkaian concat) tetap ter-render', () => {
+    ff('-f', 'lavfi', '-i', 'testsrc=size=288x512:rate=24:duration=2', join(dir, 'p.mp4'));
+    const tl: Timeline = {
+      fps: 24, aspect: '9:16',
+      tracks: {
+        video: [{ shotId: 'p1', in: 0, out: 2 }, { shotId: 'p2', in: 0, out: 2, transition: 'cut' }, { shotId: 'p3', in: 0, out: 2, transition: 'cut' }, { shotId: 'p4', in: 0, out: 2, transition: 'dip' }, { shotId: 'p5', in: 0, out: 2, transition: 'cut' }],
+        dialog: [], music: [], sfx: [], subtitle: [],
+      },
+    };
+    const out = join(dir, 'chain.mp4');
+    const assets = Object.fromEntries(['p1', 'p2', 'p3', 'p4', 'p5'].map((k) => [k, { path: join(dir, 'p.mp4'), kind: 'video' as const }]));
+    const c = compileTimeline(tl, { assets, outputPath: out, quality: '480p', preset: 'ultrafast' });
+    const r = spawnSync('ffmpeg', c.args, { encoding: 'utf8' });
+    expect(r.status, r.stderr.slice(-500)).toBe(0);
+    const dur = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', out], { encoding: 'utf8' }));
+    expect(Math.abs(dur - timelineDuration(tl))).toBeLessThan(0.15);
+  }, 60_000);
 });
