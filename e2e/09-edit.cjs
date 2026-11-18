@@ -1,4 +1,4 @@
-const { open, shot } = require('./lib.cjs');
+const { open } = require('./lib.cjs');
 const fs = require('fs');
 (async () => {
   const { b, p, errs } = await open();
