@@ -17,6 +17,8 @@ const schema = z.object({
   FAL_KEY: z.string().optional(),
   AI_MOCK: bool,
   PAYMENTS_SANDBOX: bool,
+  MIDTRANS_SERVER_KEY: z.string().optional(),
+  MIDTRANS_PRODUCTION: bool,
   APP_URL: z.string().url().default('http://localhost:3000'),
   LOCAL_MEDIA_DIR: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),

@@ -13,11 +13,13 @@ export default async function Saldo() {
   const data = await loadAccount();
   const { session: s, rates, settings, balance } = data;
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
-  const [{ data: ledger }, { data: jobs }, { data: lots }] = await Promise.all([
+  const [{ data: ledger }, { data: jobs }, { data: lots }, { data: orders }] = await Promise.all([
     s.db.from('credit_ledger').select('id, type, amount, description, created_at').order('created_at', { ascending: false }).limit(40),
     s.db.from('jobs').select('cost_breakdown, status').eq('user_id', s.userId).gte('created_at', since).not('status', 'in', '(refunded,canceled)'),
     s.db.from('credit_lots').select('remaining, expires_at').gt('remaining', 0).order('expires_at').limit(3),
+    s.db.from('topup_orders').select('id, pack_id, amount_idr, credits, status, created_at').order('created_at', { ascending: false }).limit(5),
   ]);
+  const pendingOrders = (orders ?? []).filter((o) => o.status === 'pending');
   const usage = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<Category, number>;
   for (const j of jobs ?? []) for (const c of CATEGORIES) usage[c] += Number((j.cost_breakdown as Record<string, number>)?.[c] ?? 0);
   const totalUsage = CATEGORIES.reduce((a, c) => a + usage[c], 0);
@@ -48,7 +50,12 @@ export default async function Saldo() {
         </section>
         <section className="card">
           <h2>Top-up</h2>
-          <TopupButtons packs={TOPUP_PACKS.map((p) => ({ ...p }))} sandbox={env().PAYMENTS_SANDBOX} />
+          <TopupButtons packs={TOPUP_PACKS.map((p) => ({ ...p }))} sandbox={env().PAYMENTS_SANDBOX} online={Boolean(env().MIDTRANS_SERVER_KEY)} />
+          {pendingOrders.length > 0 && (
+            <p className="note" style={{ marginTop: 10 }}>
+              {pendingOrders.length} pembayaran menunggu konfirmasi. Kredit masuk otomatis setelah pembayaran terverifikasi.
+            </p>
+          )}
           <p className="small faint" style={{ marginTop: 10 }}>Pembayaran QRIS, virtual account, dan e-wallet lewat payment gateway lokal. Top-up prabayar, tanpa tagihan belakangan.</p>
         </section>
       </div>

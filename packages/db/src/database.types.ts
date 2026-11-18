@@ -1591,6 +1591,14 @@ export type Database = {
       pgp_armor_headers: { Args: { '': string }; Returns: Record<string, unknown>[] };
       refund_job: { Args: { p_job_id: string; p_reason?: string }; Returns: number };
       spendable_credits: { Args: { p_now?: string; p_user_id: string }; Returns: number };
+      topup_order_closed: {
+        Args: { p_order_id: string; p_status: Database['public']['Enums']['order_status'] };
+        Returns: string;
+      };
+      topup_order_paid: {
+        Args: { p_amount_idr: number; p_order_id: string; p_payment_method?: string };
+        Returns: string;
+      };
       usage_by_category: { Args: { p_since?: string; p_user_id: string }; Returns: Json };
       users_with_due_credits: { Args: { p_now?: string }; Returns: string[] };
     };
