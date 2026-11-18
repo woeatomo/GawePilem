@@ -26,6 +26,8 @@ export interface ProjectBundle {
   shots: Row<'shots'>[];
   audio: Row<'audio_tracks'>[];
   renders: Row<'renders'>[];
+  /** Versi timeline tersimpan terbaru (null = belum pernah dirakit). */
+  timeline: { id: string; version: number; source: string; note: string; data: unknown } | null;
 }
 
 export function parseScript(content: unknown): ScriptContent {
@@ -49,11 +51,12 @@ export async function loadProject(db: DB, projectId: string, epNumber = 1): Prom
   ]);
   const episode = episodes?.find((e) => e.number === epNumber) ?? episodes?.[0];
   if (!episode) notFound();
-  const [{ data: script }, { data: shots }, { data: audio }, { data: renders }] = await Promise.all([
+  const [{ data: script }, { data: shots }, { data: audio }, { data: renders }, { data: timeline }] = await Promise.all([
     db.from('scripts').select('id, version, content').eq('episode_id', episode.id).order('version', { ascending: false }).limit(1).maybeSingle(),
     db.from('shots').select('*').eq('episode_id', episode.id).order('scene_no').order('order_index'),
     db.from('audio_tracks').select('*').eq('episode_id', episode.id).order('start_ms'),
     db.from('renders').select('*').eq('episode_id', episode.id).order('created_at', { ascending: false }).limit(5),
+    db.from('timelines').select('id, version, source, note, data').eq('episode_id', episode.id).order('version', { ascending: false }).limit(1).maybeSingle(),
   ]);
   return {
     project,
@@ -65,5 +68,6 @@ export async function loadProject(db: DB, projectId: string, epNumber = 1): Prom
     shots: shots ?? [],
     audio: audio ?? [],
     renders: renders ?? [],
+    timeline: timeline ?? null,
   };
 }

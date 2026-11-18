@@ -21,24 +21,31 @@ export async function POST(req: Request) {
   const s = await getSession();
   if (!s) return jsonError(401, 'unauthorized', 'Silakan masuk dulu.');
   if (await rateLimit(`render:${s.userId}`, 6, 60)) return jsonError(429, 'rate_limited', 'Terlalu sering render. Coba lagi sebentar.');
-  const p = z.object({ projectId: z.string().uuid(), episode: z.number().int().positive(), quality: z.enum(['480p', '720p', '1080p']), idempotencyKey: z.string().min(8) }).safeParse(await req.json().catch(() => null));
+  const p = z.object({ projectId: z.string().uuid(), episode: z.number().int().positive(), quality: z.enum(['480p', '720p', '1080p']), idempotencyKey: z.string().min(8), mode: z.enum(['auto', 'latest']).default('latest') }).safeParse(await req.json().catch(() => null));
   if (!p.success) return jsonError(400, 'bad_request', 'Body tidak valid');
   if (!QUALITY_BY_PLAN[s.profile.plan]?.includes(p.data.quality)) return jsonError(403, 'plan', 'Resolusi ini butuh paket Creator ke atas.');
 
   const b = await loadProject(s.db, p.data.projectId, p.data.episode);
   if (!b.shots.length) return jsonError(400, 'no_shots', 'Belum ada shot untuk dirakit.');
-  const { timeline, missing } = buildTimeline(b);
-  const valid = timelineSchema.safeParse(timeline);
-  if (!valid.success) return jsonError(400, 'bad_timeline', `Timeline tidak valid: ${valid.error.issues[0]?.message}`);
-
   const admin = supabaseAdmin();
-  const { data: last } = await admin.from('timelines').select('version').eq('episode_id', b.episode.id).order('version', { ascending: false }).limit(1).maybeSingle();
-  const { data: tl, error: te } = await s.db
-    .from('timelines')
-    .insert({ episode_id: b.episode.id, workspace_id: b.project.workspace_id, version: (last?.version ?? 0) + 1, data: valid.data as unknown as { [k: string]: Json }, source: 'auto', note: missing.length ? `Belum lengkap: ${missing.length} item` : 'Rakit otomatis', created_by: s.userId })
-    .select('id')
-    .single();
-  if (te || !tl) return jsonError(500, 'db', te?.message ?? 'Gagal menyimpan timeline');
+  let tl: { id: string };
+  let missing: string[] = [];
+  // Render versi timeline tersimpan (hasil edit) bila ada; selain itu rakit otomatis lalu simpan.
+  if (p.data.mode === 'latest' && b.timeline && timelineSchema.safeParse(b.timeline.data).success) {
+    tl = { id: b.timeline.id };
+  } else {
+    const built = buildTimeline(b);
+    missing = built.missing;
+    const valid = timelineSchema.safeParse(built.timeline);
+    if (!valid.success) return jsonError(400, 'bad_timeline', `Timeline tidak valid: ${valid.error.issues[0]?.message}`);
+    const { data: ins, error: te } = await s.db
+      .from('timelines')
+      .insert({ episode_id: b.episode.id, workspace_id: b.project.workspace_id, version: (b.timeline?.version ?? 0) + 1, data: valid.data as unknown as { [k: string]: Json }, source: 'auto', note: missing.length ? `Belum lengkap: ${missing.length} item` : 'Rakit otomatis', created_by: s.userId })
+      .select('id')
+      .single();
+    if (te || !ins) return jsonError(500, 'db', te?.message ?? 'Gagal menyimpan timeline');
+    tl = ins;
+  }
 
   const job = await chargeAndEnqueue(admin, {
     userId: s.userId, workspaceId: s.workspaceId, projectId: b.project.id, episodeId: b.episode.id, type: 'render', action: 'render',

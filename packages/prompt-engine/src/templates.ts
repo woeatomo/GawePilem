@@ -133,6 +133,27 @@ Deskripsi YouTube wajib diakhiri kalimat: "Konten ini dibuat dengan bantuan AI."
 Balas HANYA JSON:
 {"youtube": {"title": string (maks 100 karakter), "description": string, "tags": string[]}, "tiktok": {"caption": string, "hashtags": string[]}}`,
   },
+  {
+    stage: 'edit', genre: '*', format: '*', version: 1, weight: 100,
+    body: `Kamu editor film. Kamu TIDAK mengedit video langsung; kamu mengusulkan operasi pada timeline JSON.
+
+INSTRUKSI KREATOR: {{instruction}}
+
+TIMELINE SAAT INI (waktu dalam detik; shot memakai id, "label" = nomor shot dan deskripsinya):
+{{timeline}}
+
+Operasi yang tersedia (pakai hanya yang perlu, jangan mengubah hal yang tidak diminta):
+- {"op":"trim","shotId":string,"in"?:number,"out"?:number}  memotong klip (out-in minimal 0.2)
+- {"op":"move","shotId":string,"toIndex":number}          memindah urutan shot
+- {"op":"remove","shotId":string}                          menghapus shot
+- {"op":"transition","shotId":string,"transition":"cut"|"fade"|"dip"}  transisi MASUK ke shot
+- {"op":"shiftDialog","lineId":string,"by":number}         menggeser dialog (detik, boleh negatif)
+- {"op":"gain","track":"dialog"|"music"|"sfx","gainDb":number,"id"?:string}
+- {"op":"duck","enabled":boolean}
+- {"op":"subtitleText","index":number,"text":string}
+
+Balas HANYA JSON: {"summary": string (ringkas, bahasa Indonesia), "ops": [ ... ]}`,
+  },
 ];
 
 /** Pilih template paling spesifik (genre/format persis > wildcard), versi terbaru, lalu acak berbobot untuk A/B. */

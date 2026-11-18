@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Json } from '@atomo/db';
 import { sceneHeading } from '@atomo/prompt-engine';
+import { applyEdits, editOpSchema, EditError, timelineSchema } from '@atomo/timeline';
+import { buildTimeline } from '@/lib/assemble';
+import { loadProject } from '@/lib/project';
 import { getSession, requireSession } from '@/lib/auth';
 import { parseScript } from '@/lib/project';
 import { supabaseServer } from '@/lib/supabase/server';
@@ -228,4 +231,58 @@ export async function moveShot(shotId: string, dir: -1 | 1): Promise<ActionState
   await Promise.all(list.map((x, idx) => s.db.from('shots').update({ order_index: idx }).eq('id', x.id)));
   revalidatePath('/studio', 'layout');
   return { ok: true };
+}
+
+// ---------- timeline ----------
+
+async function saveTimelineVersion(episodeId: string, data: unknown, source: 'auto' | 'ai_edit' | 'manual', note: string): Promise<ActionState> {
+  const s = await requireSession();
+  const parsed = timelineSchema.safeParse(data);
+  if (!parsed.success) return fail(`Timeline tidak valid: ${parsed.error.issues[0]?.message}`);
+  const { data: ep } = await s.db.from('episodes').select('workspace_id').eq('id', episodeId).single();
+  if (!ep) return fail('Episode tidak ditemukan');
+  const { data: last } = await s.db.from('timelines').select('version').eq('episode_id', episodeId).order('version', { ascending: false }).limit(1).maybeSingle();
+  const { error } = await s.db.from('timelines').insert({
+    episode_id: episodeId, workspace_id: ep.workspace_id, version: (last?.version ?? 0) + 1,
+    data: parsed.data as unknown as { [k: string]: Json }, source, note: note.slice(0, 300), created_by: s.userId,
+  });
+  if (error) return fail(error.message);
+  revalidatePath('/studio', 'layout');
+  return { ok: true };
+}
+
+/** Rakit ulang timeline otomatis dari shot + VO terbaru (menimpa edit sebelumnya sebagai versi baru). */
+export async function reassembleTimeline(projectId: string, episode: number): Promise<ActionState> {
+  const s = await requireSession();
+  const b = await loadProject(s.db, projectId, episode);
+  if (!b.shots.length) return fail('Belum ada shot untuk dirakit.');
+  const { timeline, missing } = buildTimeline(b);
+  return saveTimelineVersion(b.episode.id, timeline, 'auto', missing.length ? `Rakit otomatis (kurang ${missing.length} item)` : 'Rakit otomatis');
+}
+
+/**
+ * Terima usulan edit AI: operasi diterapkan ke versi yang dilihat kreator. Kalau timeline sudah
+ * berubah sejak usulan dibuat, tolak supaya edit tidak menimpa perubahan lain.
+ */
+export async function acceptTimelineEdit(episodeId: string, baseVersion: number, ops: unknown, summary: string): Promise<ActionState> {
+  const s = await requireSession();
+  const parsedOps = z.array(editOpSchema).min(1).max(50).safeParse(ops);
+  if (!parsedOps.success) return fail('Usulan edit tidak valid.');
+  const { data: cur } = await s.db.from('timelines').select('version, data').eq('episode_id', episodeId).order('version', { ascending: false }).limit(1).maybeSingle();
+  if (!cur) return fail('Timeline tidak ditemukan.');
+  if (cur.version !== baseVersion) return fail('Timeline sudah berubah sejak usulan dibuat. Minta usulan baru.');
+  try {
+    const next = applyEdits(timelineSchema.parse(cur.data), parsedOps.data);
+    return saveTimelineVersion(episodeId, next, 'ai_edit', `AI: ${summary}`);
+  } catch (e) {
+    return fail(e instanceof EditError ? e.message : 'Gagal menerapkan edit.');
+  }
+}
+
+/** Kembali ke versi timeline sebelumnya (disimpan sebagai versi baru). */
+export async function restoreTimeline(episodeId: string, version: number): Promise<ActionState> {
+  const s = await requireSession();
+  const { data } = await s.db.from('timelines').select('data').eq('episode_id', episodeId).eq('version', version).single();
+  if (!data) return fail('Versi tidak ditemukan');
+  return saveTimelineVersion(episodeId, data.data, 'manual', `Kembali ke versi ${version}`);
 }

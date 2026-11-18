@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "zod": "^4.1.0",
-    "@atomo/credits": "workspace:*"
+    "@atomo/credits": "workspace:*",
+    "@atomo/timeline": "workspace:*"
   }
 }

@@ -141,6 +141,16 @@ export function mockResponder(req: { messages: ChatMessage[] }): string {
       return JSON.stringify(SAMPLE_CONTINUITY);
     case 'publish_meta':
       return JSON.stringify(SAMPLE_META);
+    case 'edit': {
+      // Usulan contoh: percepat shot pertama dan beri transisi dip ke shot kedua.
+      const clips = [...user.matchAll(/"shotId":"([^"]+)","in":([\d.]+),"out":([\d.]+)/g)];
+      const ops: unknown[] = [];
+      const first = clips[0];
+      if (first) ops.push({ op: 'trim', shotId: first[1], out: Math.max(Number(first[2]) + 0.5, Number(first[3]) * 0.8) });
+      if (clips[1]) ops.push({ op: 'transition', shotId: clips[1][1], transition: 'dip' });
+      if (!ops.length) ops.push({ op: 'duck', enabled: true });
+      return JSON.stringify({ summary: 'Shot pembuka dipercepat 20% dan transisi ke shot kedua diganti dip ke hitam.', ops });
+    }
     default:
       return 'OK';
   }

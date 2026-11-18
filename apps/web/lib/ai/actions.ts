@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Category } from '@atomo/credits';
 
 export const ACTION_IDS = [
-  'research', 'characters', 'outline', 'scene', 'rewrite', 'shotlist', 'continuity', 'publish_meta',
+  'research', 'characters', 'outline', 'scene', 'rewrite', 'shotlist', 'continuity', 'publish_meta', 'edit',
   'charref', 'keyframe', 'clip', 'vo',
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
@@ -20,6 +20,7 @@ export const actionParams = {
   shotlist: z.object({ replace: z.boolean().default(false) }),
   continuity: z.object({}),
   publish_meta: z.object({}),
+  edit: z.object({ instruction: z.string().trim().min(3, 'Tulis perintah edit').max(400) }),
   charref: z.object({ characterId: z.string().uuid() }),
   keyframe: z.object({ shotIds: z.array(z.string().uuid()).min(1).max(60) }),
   clip: z.object({ shotIds: z.array(z.string().uuid()).min(1).max(60) }),
@@ -36,6 +37,7 @@ export const ACTION_META: Record<ActionId, { label: string; kind: 'stream' | 'st
   shotlist: { label: 'Pecah jadi shot list', kind: 'structured', jobType: 'text' },
   continuity: { label: 'Cek kontinuitas', kind: 'structured', jobType: 'text' },
   publish_meta: { label: 'Metadata publish', kind: 'structured', jobType: 'text' },
+  edit: { label: 'Usulan edit AI', kind: 'structured', jobType: 'text' },
   charref: { label: 'Reference image karakter', kind: 'media', jobType: 'image' },
   keyframe: { label: 'Frame kunci', kind: 'media', jobType: 'image' },
   clip: { label: 'Image to video', kind: 'media', jobType: 'video' },
@@ -60,6 +62,7 @@ export function quantities(action: ActionId, params: unknown, ctx: QuantityConte
     case 'rewrite':
     case 'continuity':
     case 'publish_meta':
+    case 'edit':
       return [{ category: 'naskah', quantity: 1 }];
     case 'shotlist':
       return [{ category: 'naskah', quantity: Math.max(1, ctx.sceneCount) }];

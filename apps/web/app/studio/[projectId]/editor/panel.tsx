@@ -2,17 +2,40 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import type { Timeline } from '@atomo/timeline';
+import { useState, useTransition } from 'react';
+import type { EditProposal, Timeline } from '@atomo/timeline';
 import { clipStarts } from '@atomo/timeline';
+import { acceptTimelineEdit, reassembleTimeline, restoreTimeline } from '@/app/actions';
+import { AIButton } from '@/components/use-ai';
 import { fmt1, timecode, useToast } from '@/components/ui';
+
+const QUICK_EDIT = ['Percepat pacing scene 1', 'Tambah jeda sebelum twist', 'Pakai dip ke hitam antar-scene', 'Kecilkan musik saat dialog', 'Potong shot yang terlalu lama'];
+const SOURCE: Record<string, string> = { auto: 'rakit otomatis', ai_edit: 'edit AI', manual: 'manual' };
+
+function describeOp(op: EditProposal['ops'][number], no: Record<string, number>): string {
+  switch (op.op) {
+    case 'trim': return `Potong shot #${no[op.shotId] ?? '?'}${op.in !== undefined ? ` mulai ${fmt1(op.in)} dtk` : ''}${op.out !== undefined ? ` sampai ${fmt1(op.out)} dtk` : ''}`;
+    case 'move': return `Pindah shot #${no[op.shotId] ?? '?'} ke urutan ${op.toIndex + 1}`;
+    case 'remove': return `Hapus shot #${no[op.shotId] ?? '?'}`;
+    case 'transition': return `Transisi ${op.transition} masuk ke shot #${no[op.shotId] ?? '?'}`;
+    case 'shiftDialog': return `Geser dialog ${op.lineId} ${op.by > 0 ? '+' : ''}${fmt1(op.by)} dtk`;
+    case 'gain': return `Volume ${op.track} ${op.gainDb} dB`;
+    case 'duck': return `Ducking musik ${op.enabled ? 'aktif' : 'mati'}`;
+    case 'subtitleText': return `Ubah subtitle #${op.index + 1}: “${op.text}”`;
+  }
+}
 
 interface R { id: string; status: string; progress: number; url: string | null; resolution: string; error: string | null; at: string; duration: number | null }
 
 export function EditorPanel(p: {
   projectId: string; episode: number; aspect: string; plan: string; timeline: Timeline | null; duration: number; missing: string[];
-  shotNo: Record<string, number>; renders: R[];
+  shotNo: Record<string, number>; renders: R[]; episodeId: string;
+  saved: { version: number; source: string; note: string } | null;
+  versions: { version: number; source: string; note: string; at: string }[];
 }) {
+  const [instruction, setInstruction] = useState('');
+  const [proposal, setProposal] = useState<{ p: EditProposal; base: number } | null>(null);
+  const [pending, start] = useTransition();
   const [quality, setQuality] = useState<'480p' | '720p' | '1080p'>(p.plan === 'free' ? '720p' : '1080p');
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -28,7 +51,7 @@ export function EditorPanel(p: {
       const res = await fetch('/api/render', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ projectId: p.projectId, episode: p.episode, quality, idempotencyKey: crypto.randomUUID().replace(/-/g, '') }),
+        body: JSON.stringify({ projectId: p.projectId, episode: p.episode, quality, mode: 'latest', idempotencyKey: crypto.randomUUID().replace(/-/g, '') }),
       });
       const j = (await res.json()) as { error?: { message: string }; missing?: string[] };
       if (!res.ok) toast(j.error?.message ?? 'Gagal memulai render', 'err');
@@ -54,7 +77,7 @@ export function EditorPanel(p: {
             <option value="1080p" disabled={p.plan === 'free'}>1080p{p.plan === 'free' ? ' (Creator+)' : ''}</option>
           </select>
           <button className="btn primary" onClick={render} disabled={busy || !t || Boolean(active)}>
-            {active ? `Merender ${active.progress}%` : busy ? 'Memulai…' : 'Rakit & render MP4'}
+            {active ? `Merender ${active.progress}%` : busy ? 'Memulai…' : p.saved ? `Render timeline v${p.saved.version}` : 'Rakit & render MP4'}
             <span className="cost">gratis</span>
           </button>
         </div>
@@ -69,9 +92,15 @@ export function EditorPanel(p: {
           <p className="muted">Belum ada shot. Selesaikan <Link href={`/studio/${p.projectId}/storyboard`}><b>storyboard</b></Link> dulu.</p>
         </section>
       ) : (
+        <>
         <section className="tl" aria-label="Timeline">
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-            <span className="mono small muted">00:00:00:00</span>
+            <span className="row">
+              <span className="pill">{p.saved ? `v${p.saved.version} · ${SOURCE[p.saved.source] ?? p.saved.source}` : 'pratinjau, belum disimpan'}</span>
+              <button className="btn sm ghost" disabled={pending} onClick={() => start(async () => { const r = await reassembleTimeline(p.projectId, p.episode); toast(r?.ok ? 'Timeline dirakit ulang' : (r?.message ?? 'Gagal'), r?.ok ? 'ok' : 'err'); setProposal(null); })}>
+                {p.saved ? 'Rakit ulang otomatis' : 'Simpan rakitan'}
+              </button>
+            </span>
             <span className="mono small">{timecode(p.duration)} · {t.fps} fps · {t.aspect}</span>
           </div>
           <div className="track">
@@ -108,6 +137,61 @@ export function EditorPanel(p: {
             <div className="lane">{t.tracks.music.length ? <div className="clip m" style={{ left: 0, width: '100%' }}>musik · ducking</div> : <span className="faint small" style={{ padding: '0 8px', lineHeight: '34px' }}>tanpa musik</span>}</div>
           </div>
         </section>
+        <section className="card">
+          <div className="card-h">
+            <h2>Edit dengan perintah</h2>
+            <span className="pill">AI mengusulkan, kamu yang memutuskan</span>
+          </div>
+          {!p.saved ? (
+            <p className="muted small">Simpan rakitan timeline dulu, lalu ketik perintah edit seperti “percepat pacing SC 2”.</p>
+          ) : (
+            <>
+              <div className="rewrite">
+                <input type="text" value={instruction} maxLength={400} onChange={(e) => setInstruction(e.target.value)} placeholder="mis. tambah jeda sebelum ketukan ketiga" aria-label="Perintah edit" />
+                <AIButton
+                  action="edit"
+                  params={{ instruction }}
+                  items={[{ category: 'naskah', quantity: 1 }]}
+                  label="Minta usulan"
+                  disabled={instruction.trim().length < 3}
+                  onData={(d) => setProposal({ p: d as EditProposal, base: p.saved!.version })}
+                />
+              </div>
+              <div className="quick" style={{ marginTop: 8 }}>
+                {QUICK_EDIT.map((q) => <button key={q} onClick={() => setInstruction(q)}>{q}</button>)}
+              </div>
+            </>
+          )}
+          {proposal && (
+            <div className="note" style={{ marginTop: 12 }}>
+              <b>Usulan:</b> {proposal.p.summary}
+              <ul style={{ margin: '6px 0', paddingLeft: 18 }}>
+                {proposal.p.ops.map((op, i) => <li key={i}>{describeOp(op, p.shotNo)}</li>)}
+              </ul>
+              <div className="row" style={{ marginTop: 8 }}>
+                <button className="btn sm primary" disabled={pending} onClick={() => start(async () => {
+                  const r = await acceptTimelineEdit(p.episodeId, proposal.base, proposal.p.ops, proposal.p.summary);
+                  if (r?.ok) { toast('Edit diterapkan sebagai versi baru'); setProposal(null); setInstruction(''); } else toast(r?.message ?? 'Gagal', 'err');
+                })}>Terima</button>
+                <button className="btn sm ghost" onClick={() => setProposal(null)}>Batalkan</button>
+              </div>
+            </div>
+          )}
+          {p.versions.length > 1 && (
+            <details className="small muted" style={{ marginTop: 12 }}>
+              <summary>Riwayat versi timeline ({p.versions.length})</summary>
+              <ul style={{ paddingLeft: 16, margin: '6px 0' }}>
+                {p.versions.map((v, i) => (
+                  <li key={v.version} style={{ margin: '4px 0' }}>
+                    v{v.version} · {SOURCE[v.source] ?? v.source} · {v.note}{' '}
+                    {i > 0 && <button className="btn ghost sm" disabled={pending} onClick={() => start(async () => { const r = await restoreTimeline(p.episodeId, v.version); toast(r?.ok ? `Kembali ke v${v.version}` : (r?.message ?? 'Gagal'), r?.ok ? 'ok' : 'err'); })}>pulihkan</button>}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
+        </>
       )}
       <div className="grid2">
         <section className="card">

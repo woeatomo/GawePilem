@@ -13,6 +13,7 @@ import { supabaseAdmin } from '../supabase/server';
 import type { ProjectBundle, ScriptContent } from '../project';
 import { ACTION_META, actionParams, quantities, type ActionId, type ActionParams } from './actions';
 import { projectContext, quantityContext } from './context';
+import type { Timeline } from '@atomo/timeline';
 
 export class ActionError extends Error {
   constructor(
@@ -247,6 +248,7 @@ function precheck(action: ActionId, p: Record<string, unknown>, b: ProjectBundle
       if (shots.some((s) => !s.approved)) throw new ActionError(409, 'not_approved', 'Setujui storyboard shot ini dulu. Video adalah tahap termahal.');
     }
   }
+  if (action === 'edit' && !b.timeline) throw new ActionError(409, 'no_timeline', 'Rakit timeline dulu sebelum mengedit dengan perintah.');
   if (action === 'vo' && b.characters.some((c) => !c.voice_id))
     throw new ActionError(409, 'no_voice', 'Pilih dan kunci suara untuk setiap karakter dulu.');
 }
@@ -272,9 +274,25 @@ function promptVars(action: ActionId, p: Record<string, unknown>, b: ProjectBund
       return { sceneNo: n, sceneSummary: `${scenes[n - 1]?.heading ?? ''}\n${b.script?.content.summaries?.[n - 1] ?? ''}`.trim() };
     case 'rewrite':
       return { sceneNo: n, instruction: p.instruction as string, sceneText: scenes[n - 1]?.body ?? '' };
+    case 'edit':
+      return { instruction: p.instruction as string, timeline: compactTimeline(b) };
     default:
       return {};
   }
+}
+
+/** Timeline ringkas untuk prompt edit: id + waktu + label shot/dialog, tanpa URL aset. */
+function compactTimeline(b: ProjectBundle): string {
+  const t = b.timeline?.data as Timeline | undefined;
+  if (!t) return '{}';
+  const shot = new Map(b.shots.map((s, i) => [s.id, `#${i + 1} SC${s.scene_no} ${s.shot_type}: ${s.description}`]));
+  return JSON.stringify({
+    fps: t.fps,
+    video: t.tracks.video.map((v) => ({ shotId: v.shotId, in: v.in, out: v.out, transition: v.transition ?? 'cut', label: shot.get(v.shotId) ?? '' })),
+    dialog: t.tracks.dialog.map((d) => ({ lineId: d.lineId, start: d.start })),
+    music: t.tracks.music.map((m) => ({ id: m.assetId, gainDb: m.gainDb, duck: m.duckUnderDialog })),
+    subtitle: t.tracks.subtitle.map((x, i) => ({ index: i, start: x.start, end: x.end, text: x.text })),
+  });
 }
 
 function mediaJob(action: ActionId, p: Record<string, unknown>, jobId: string, workspaceId: string, episodeId: string) {
@@ -377,6 +395,9 @@ async function persistStructured(action: ActionId, p: Record<string, unknown>, b
       await s.db.from('episodes').update({ title: b.episode.title }).eq('id', b.episode.id);
       return `${rows.length} shot`;
     }
+    case 'edit':
+      // Usulan tidak langsung diterapkan: kreator menerima atau membatalkan di editor.
+      return `${(data as { ops: unknown[] }).ops.length} operasi diusulkan`;
     default:
       return 'ok';
   }

@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { editProposalSchema } from '@atomo/timeline';
 
-export const STAGES = ['research', 'characters', 'outline', 'scene', 'rewrite', 'shotlist', 'continuity', 'publish_meta'] as const;
+export const STAGES = ['research', 'characters', 'outline', 'scene', 'rewrite', 'shotlist', 'continuity', 'publish_meta', 'edit'] as const;
 export const stageSchema = z.enum(STAGES);
 export type Stage = z.infer<typeof stageSchema>;
 
@@ -92,5 +93,6 @@ export const OUTPUT_SCHEMAS = {
   shotlist: shotlistOutputSchema,
   continuity: continuityOutputSchema,
   publish_meta: publishMetaSchema,
+  edit: editProposalSchema,
 } as const;
 export type StructuredStage = keyof typeof OUTPUT_SCHEMAS;

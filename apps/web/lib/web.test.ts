@@ -26,6 +26,7 @@ function bundle(over: Partial<ProjectBundle> = {}): ProjectBundle {
     shots,
     audio: [],
     renders: [],
+    timeline: null,
     ...over,
   };
 }

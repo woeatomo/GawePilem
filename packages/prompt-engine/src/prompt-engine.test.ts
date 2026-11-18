@@ -86,6 +86,8 @@ describe('fixture mock valid terhadap skema', () => {
     expect(outlineOutputSchema.parse(JSON.parse(mockResponder(req('outline')))).scenes).toHaveLength(3);
     expect(shotlistOutputSchema.parse(JSON.parse(mockResponder(req('shotlist')))).shots).toHaveLength(12);
     expect(mockResponder(req('scene', 'Tulis scene 2 lengkap'))).toContain('KAMAR 6');
+    const edit = OUTPUT_SCHEMAS.edit.parse(JSON.parse(mockResponder(req('edit', '[{"shotId":"a","in":0,"out":5},{"shotId":"b","in":0,"out":3}]'))));
+    expect(edit.ops).toEqual([{ op: 'trim', shotId: 'a', out: 4 }, { op: 'transition', shotId: 'b', transition: 'dip' }]);
   });
 
   it('shotType dinormalisasi', () => {
