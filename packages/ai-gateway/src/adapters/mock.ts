@@ -1,3 +1,4 @@
+import { gradientPng } from '../png';
 import type {
   AudioAsset, ImageAI, ImageAsset, ImageRequest, ScriptAI, TextRequest, TextResult, TextStream,
   VideoAI, VideoJobHandle, VideoJobStatus, VideoRequest, VoiceAI, VoiceRequest,
@@ -62,17 +63,15 @@ export class MockVoiceAI implements VoiceAI {
   }
 }
 
-const DIM = { '9:16': [576, 1024], '16:9': [1024, 576], '1:1': [768, 768] } as const;
+const DIM = { '9:16': [288, 512], '16:9': [512, 288], '1:1': [384, 384] } as const;
 
 export class MockImageAI implements ImageAI {
   readonly provider = 'mock';
   async generate(req: ImageRequest): Promise<ImageAsset[]> {
     const [w, h] = DIM[req.aspect];
     const hue = [...req.prompt].reduce((a, c) => (a + c.charCodeAt(0)) % 360, 0);
-    const label = req.prompt.slice(0, 40).replace(/[<&>"]/g, '');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${hue} 30% 30%)"/><stop offset="1" stop-color="hsl(${hue} 30% 8%)"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><text x="50%" y="50%" fill="#ebe8e2" font-family="sans-serif" font-size="${Math.round(w / 24)}" text-anchor="middle">${label}</text></svg>`;
-    const url = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-    return Array.from({ length: req.count ?? 1 }, (_, i) => ({ url, width: w, height: h, mimeType: 'image/svg+xml', seed: (req.seed ?? 1) + i }));
+    const url = `data:image/png;base64,${Buffer.from(gradientPng(w, h, hue)).toString('base64')}`;
+    return Array.from({ length: req.count ?? 1 }, (_, i) => ({ url, width: w, height: h, mimeType: 'image/png', seed: (req.seed ?? 1) + i }));
   }
 }
 

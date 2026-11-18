@@ -40,7 +40,7 @@ export interface CallMeta {
 export interface GatewayOptions {
   platformKeys: PlatformKeys;
   /** Dekripsi key BYOK. Default: AES-GCM dengan ENCRYPTION_KEY. */
-  decrypt?: (encrypted: string) => string;
+  decrypt?: (encrypted: string, aad: string) => string;
   fetch?: typeof fetch;
   limiter?: RateLimiter;
   retry?: Partial<RetryOptions>;
@@ -63,17 +63,17 @@ const DEFAULT_LIMITS = {
  */
 export class AIGateway {
   private readonly limiter: RateLimiter;
-  private readonly decrypt: (e: string) => string;
+  private readonly decrypt: (e: string, aad: string) => string;
 
   constructor(private readonly opts: GatewayOptions) {
     this.limiter = opts.limiter ?? new RateLimiter(DEFAULT_LIMITS);
-    this.decrypt = opts.decrypt ?? ((e) => decryptSecret(e));
+    this.decrypt = opts.decrypt ?? ((e, aad) => decryptSecret(e, undefined, aad));
   }
 
   private keyFor(setting: ProviderSetting): string {
     if (setting.mode === 'byok') {
       if (!setting.encryptedKey) throw new ProviderError('Mode BYOK aktif tapi API key belum diisi', setting.provider, 'auth');
-      return this.decrypt(setting.encryptedKey);
+      return this.decrypt(setting.encryptedKey, setting.keyAad ?? '');
     }
     const k = this.opts.platformKeys[setting.provider as keyof PlatformKeys];
     if (!k) throw new ProviderError(`Key platform untuk ${setting.provider} belum dikonfigurasi`, setting.provider, 'auth');

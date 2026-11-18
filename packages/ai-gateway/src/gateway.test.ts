@@ -141,9 +141,11 @@ describe('retry, fallback, rate limit', () => {
 describe('BYOK & key', () => {
   it('mode BYOK memakai key user yang didekripsi di server', async () => {
     const { f, calls } = fakeFetch(() => chatOk('ok'));
-    const enc = encryptSecret('sk-user-123456789', KEY);
-    const gw = new AIGateway({ platformKeys: { opencode: 'platform' }, fetch: f, decrypt: (e) => decryptSecret(e, KEY) });
-    const { meta } = await gw.text(setting({ mode: 'byok', encryptedKey: enc }), { messages: [] });
+    const enc = encryptSecret('sk-user-123456789', KEY, 'ws1:naskah');
+    const gw = new AIGateway({ platformKeys: { opencode: 'platform' }, fetch: f, decrypt: (e, aad) => decryptSecret(e, KEY, aad) });
+    const { meta } = await gw.text(setting({ mode: 'byok', encryptedKey: enc, keyAad: 'ws1:naskah' }), { messages: [] });
+    // Ciphertext workspace lain tidak bisa dipakai (AAD berbeda).
+    expect(() => gw.script(setting({ mode: 'byok', encryptedKey: enc, keyAad: 'ws2:naskah' }))).toThrow();
     expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe('Bearer sk-user-123456789');
     expect(meta.billingMode).toBe('byok');
   });

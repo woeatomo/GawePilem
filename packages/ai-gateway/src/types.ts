@@ -148,4 +148,6 @@ export interface ProviderSetting {
   tier: Tier;
   /** Key BYOK terenkripsi; didekripsi di server saja. */
   encryptedKey?: string | null;
+  /** Additional authenticated data saat enkripsi (mis. "<workspaceId>:<category>"). */
+  keyAad?: string;
 }

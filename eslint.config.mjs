@@ -1,5 +1,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import nextPlugin from '@next/eslint-plugin-next';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
   { ignores: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/next-env.d.ts', 'supabase/**'] },
@@ -13,6 +15,17 @@ export default tseslint.config(
       // Generator di dalam method butuh alias `this`.
       '@typescript-eslint/no-this-alias': 'off',
     },
+  },
+  {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    plugins: { '@next/next': nextPlugin, 'react-hooks': reactHooks },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+    settings: { next: { rootDir: 'apps/web' } },
   },
   {
     // Hanya ai-gateway yang boleh bicara langsung dengan provider AI.

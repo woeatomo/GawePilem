@@ -23,8 +23,6 @@ create table public.projects (
   episode_count integer not null default 1 check (episode_count between 1 and 500),
   -- Budget cap per kategori, mis. {"video": 3000}. null/absent = tanpa batas.
   budget_caps jsonb not null default '{}'::jsonb,
-  -- Tier default per kategori untuk project ini.
-  tiers jsonb not null default '{"naskah":"standar","vo":"standar","image":"standar","video":"standar"}'::jsonb,
   archived_at timestamptz,
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now(),

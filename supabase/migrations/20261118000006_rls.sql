@@ -1,3 +1,5 @@
+-- PENTING untuk migrasi berikutnya: Supabase memberi default privilege ke anon/authenticated untuk
+-- tabel & fungsi baru di schema public. Setiap migrasi baru WAJIB revoke + grant eksplisit seperti di sini.
 -- =====================================================================
 -- Row Level Security. Akses data milik user lewat workspace_id.
 -- Kolom rahasia (encrypted_key, encrypted_tokens) tidak di-GRANT ke client.
@@ -73,7 +75,7 @@ grant update (title, synopsis) on public.episodes to authenticated;
 revoke update on public.renders from authenticated;
 revoke insert, update, delete on public.renders from authenticated;
 revoke update on public.projects from authenticated;
-grant update (title, genre, visual_style, language, target_duration_sec, episode_count, budget_caps, tiers, archived_at)
+grant update (title, genre, visual_style, language, target_duration_sec, episode_count, budget_caps, archived_at)
   on public.projects to authenticated;
 
 -- ---------- provider settings: tanpa kolom encrypted_key ----------
