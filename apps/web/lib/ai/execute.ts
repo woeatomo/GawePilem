@@ -82,6 +82,10 @@ export async function executeAction(input: ExecuteInput): Promise<ExecuteResult>
     }
   }
 
+  // Viewer tidak boleh menjalankan aksi berbayar yang menulis ke project.
+  const { data: member } = await s.db.from('workspace_members').select('role').eq('workspace_id', b.project.workspace_id).eq('user_id', s.userId).maybeSingle();
+  if (!member || member.role === 'viewer') throw new ActionError(403, 'forbidden', 'Peran kamu hanya bisa melihat project ini.');
+
   // Validasi prasyarat per aksi (sebelum charge).
   precheck(action, params, b);
 
@@ -164,23 +168,39 @@ export async function executeAction(input: ExecuteInput): Promise<ExecuteResult>
     const line = (o: unknown) => enc.encode(JSON.stringify(o) + '\n');
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
+        // Kalau user menutup tab, generate tetap diselesaikan & disimpan (sudah dibayar); kirim ke client diabaikan.
+        let open = true;
+        const send = (o: unknown) => {
+          if (!open) return;
+          try {
+            controller.enqueue(line(o));
+          } catch {
+            open = false;
+          }
+        };
         try {
           const st = gateway().textStream(setting, { ...req, stream: true });
           let text = '';
           for await (const d of st) {
             text += d;
-            controller.enqueue(line({ t: 'delta', v: d }));
+            send({ t: 'delta', v: d });
           }
           const final = await st.final();
           const m = await st.meta;
           await persistText(action, params, b, final.text || text, s);
           await jobSucceed(admin, job.id, { chars: (final.text || text).length, usage: { ...final.usage }, model: m.model, fallbackFrom: m.fallbackFrom ?? null });
-          controller.enqueue(line({ t: 'done', jobId: job.id, cost: job.cost }));
+          send({ t: 'done', jobId: job.id, cost: job.cost });
         } catch (err) {
           const f = await fail(err);
-          controller.enqueue(line({ t: 'error', message: f.message, refunded: f.refunded }));
+          send({ t: 'error', message: f.message, refunded: f.refunded });
         } finally {
-          controller.close();
+          if (open) {
+            try {
+              controller.close();
+            } catch {
+              /* stream sudah ditutup client */
+            }
+          }
         }
       },
     });

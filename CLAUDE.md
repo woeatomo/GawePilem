@@ -43,16 +43,20 @@ supabase/
 
 ## Perintah
 
-Isi bagian ini setelah scaffold selesai, lalu jaga tetap akurat:
-
 ```
 pnpm install
-pnpm dev            # web + worker
-pnpm test
+pnpm dev                       # web (Next.js :3000) + worker (BullMQ)
+pnpm test                      # Vitest semua paket (render FFmpeg nyata ikut dites bila ffmpeg ada)
+pnpm test:db                   # migrasi + RLS + RPC kredit di Postgres sementara (tanpa Docker)
 pnpm lint && pnpm typecheck
-supabase start      # Supabase lokal
-supabase db reset   # terapkan ulang semua migrasi
+pnpm build                     # build web
+supabase start                 # Supabase lokal (Docker)
+supabase db reset              # terapkan ulang semua migrasi + seed tarif
+bash scripts/gen-db-types.sh   # regenerate packages/db/src/database.types.ts
 ```
+
+Mode dev tanpa API key: `AI_MOCK=1` (semua kategori AI pakai adapter mock) dan `PAYMENTS_SANDBOX=1` (top-up simulasi).
+Migrasi baru WAJIB revoke + grant eksplisit (Supabase memberi default privilege ke anon/authenticated).
 
 ---
 
@@ -175,17 +179,19 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 ## Urutan pengerjaan
 
 ### Fase 1: MVP (microdrama 9:16)
-- [ ] Scaffold monorepo, Supabase lokal, CI (lint, typecheck, test)
-- [ ] Auth Supabase, workspace, project, episode
-- [ ] `packages/credits` + tabel `rates` dan `credit_ledger` + RPC `charge_and_enqueue` + tes
-- [ ] AI gateway: adapter OpenCode Zen (teks, streaming) dengan BYOK
-- [ ] Prompt engine v1: riset, karakter, naskah, shot list (genre horor dan drama dulu)
-- [ ] Modul UI tahap 1–4 sesuai prototype
-- [ ] Adapter gambar + consistency (reference image karakter)
-- [ ] Adapter video (image-to-video) + antrean BullMQ + progres realtime
-- [ ] Adapter VO (ElevenLabs) dengan voice lock per karakter
-- [ ] Timeline JSON + rakit otomatis + render FFmpeg + export MP4
-- [ ] Publish manual ke YouTube
+- [x] Scaffold monorepo, Supabase lokal, CI (lint, typecheck, test)
+- [x] Auth Supabase, workspace, project, episode
+- [x] `packages/credits` + tabel `rates` dan `credit_ledger` + RPC `charge_and_enqueue` + tes
+- [x] AI gateway: adapter OpenCode Zen (teks, streaming) dengan BYOK
+- [x] Prompt engine v1: riset, karakter, naskah, shot list (genre horor dan drama dulu)
+- [x] Modul UI tahap 1–4 sesuai prototype
+- [x] Adapter gambar + consistency (reference image karakter)
+- [x] Adapter video (image-to-video) + antrean BullMQ + progres (polling job, belum Supabase Realtime)
+- [x] Adapter VO (ElevenLabs) dengan voice lock per karakter
+- [x] Timeline JSON + rakit otomatis + render FFmpeg + export MP4
+- [x] Publish manual ke YouTube
+- [ ] Uji end-to-end dengan Supabase lokal + key provider asli (belum dijalankan: lihat catatan verifikasi)
+- [ ] Verifikasi endpoint OpenCode Zen per model (`GET /models`), ToS reseller, dan field `status.containsSyntheticMedia` YouTube di docs terbaru
 
 ### Fase 2: Beta
 - [ ] Top-up via payment gateway + webhook + estimasi biaya di semua tombol AI
