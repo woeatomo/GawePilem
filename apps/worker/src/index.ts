@@ -7,6 +7,7 @@ import { charref, clips, keyframes, voiceOver } from './handlers/media';
 import { render } from './handlers/render';
 import { expireCredits } from './handlers/expire';
 import { publish } from './handlers/publish';
+import { purgeWorkspaceMedia } from './handlers/purge';
 
 const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
@@ -25,6 +26,8 @@ async function handle(job: BullJob<MediaJobData>) {
       return runJob(job, d.jobId, (j) => render(j, d.renderId));
     case 'publish':
       return runJob(job, d.jobId, (j) => publish(j, d.publicationId));
+    case 'purge':
+      return purgeWorkspaceMedia(d.workspaceId);
     case 'expire':
       return expireCredits();
   }

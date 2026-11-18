@@ -10,6 +10,7 @@ export type MediaJobData =
   | { kind: 'vo'; jobId: string; workspaceId: string; episodeId: string; lineIds: string[] }
   | { kind: 'render'; jobId: string; workspaceId: string; renderId: string }
   | { kind: 'publish'; jobId: string; workspaceId: string; publicationId: string }
+  | { kind: 'purge'; jobId: string; workspaceId: string }
   | { kind: 'expire'; jobId: string; workspaceId: string };
 
 export function queueFor(kind: MediaJobData['kind']): string {

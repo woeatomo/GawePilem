@@ -194,10 +194,12 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [ ] Verifikasi endpoint OpenCode Zen per model (`GET /models`), ToS reseller, dan field `status.containsSyntheticMedia` YouTube di docs terbaru
 
 ### Fase 2: Beta
-- [ ] Top-up via payment gateway + webhook + estimasi biaya di semua tombol AI
+- [x] Top-up via payment gateway (Midtrans Snap: QRIS, VA, e-wallet) + webhook bertanda tangan + estimasi biaya di semua tombol AI
 - [ ] Integrasi TikTok, ajukan audit YouTube dan TikTok
-- [ ] Subtitle otomatis dan AI editor dengan perintah teks
-- [ ] Moderasi sebelum publish
+- [x] AI editor dengan perintah teks (usulan operasi timeline, terima/batal, versi timeline)
+- [ ] Subtitle otomatis dari speech-to-text (sekarang subtitle diambil dari naskah)
+- [x] Moderasi sebelum publish (prefilter teks; antrean review manual belum ada UI)
+- [x] Hapus akun & ekspor data (UU PDP)
 
 ### Fase 3: Launch
 - [ ] Paket langganan, publish terjadwal, cross-post, analitik ringan

@@ -10,7 +10,9 @@ import { buildTimeline } from '@/lib/assemble';
 import { loadProject } from '@/lib/project';
 import { getSession, requireSession } from '@/lib/auth';
 import { parseScript } from '@/lib/project';
-import { supabaseServer } from '@/lib/supabase/server';
+import { supabaseAdmin, supabaseServer } from '@/lib/supabase/server';
+import { enqueueMedia } from '@/lib/queue';
+import { audit } from '@atomo/db';
 
 export type ActionState = { ok: boolean; message?: string } | null;
 const fail = (message: string): ActionState => ({ ok: false, message });
@@ -285,4 +287,28 @@ export async function restoreTimeline(episodeId: string, version: number): Promi
   const { data } = await s.db.from('timelines').select('data').eq('episode_id', episodeId).eq('version', version).single();
   if (!data) return fail('Versi tidak ditemukan');
   return saveTimelineVersion(episodeId, data.data, 'manual', `Kembali ke versi ${version}`);
+}
+
+// ---------- akun (UU PDP) ----------
+
+/**
+ * Hapus akun & data. Karya, karakter, akun sosial (token), dan pengaturan provider ikut terhapus
+ * lewat cascade. Ledger kredit dipertahankan tanpa data identitas (kewajiban pencatatan keuangan).
+ */
+export async function deleteAccount(_: ActionState, form: FormData): Promise<ActionState> {
+  const s = await getSession();
+  if (!s) redirect('/login');
+  const typed = String(form.get('confirm') ?? '').trim().toLowerCase();
+  if (typed !== s.email.toLowerCase()) return fail('Ketik email kamu persis untuk konfirmasi.');
+  const admin = supabaseAdmin();
+  const { data: owned } = await admin.from('workspaces').select('id').eq('owner_id', s.userId);
+  await admin.from('profiles').update({ deletion_requested_at: new Date().toISOString() }).eq('id', s.userId);
+  await audit(admin, { actorId: null, workspaceId: null, action: 'account.delete', targetType: 'user', targetId: s.userId, details: { workspaces: owned?.length ?? 0 } });
+  for (const w of owned ?? []) {
+    await enqueueMedia({ kind: 'purge', jobId: `purge-${w.id}`, workspaceId: w.id }).catch(() => undefined);
+  }
+  const { error } = await admin.auth.admin.deleteUser(s.userId);
+  if (error) return fail(`Gagal menghapus akun: ${error.message}. Hubungi dukungan.`);
+  await s.db.auth.signOut().catch(() => undefined);
+  redirect('/login?deleted=1');
 }

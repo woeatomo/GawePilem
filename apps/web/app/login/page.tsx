@@ -4,8 +4,8 @@ import { AuthForm } from './form';
 
 export const metadata: Metadata = { title: 'Masuk' };
 
-export default async function Login({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const { next } = await searchParams;
+export default async function Login({ searchParams }: { searchParams: Promise<{ next?: string; deleted?: string }> }) {
+  const { next, deleted } = await searchParams;
   return (
     <div className="auth">
       <div className="card">
@@ -16,6 +16,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
             <p className="muted small">Kamu yang sutradara, AI kru-nya.</p>
           </div>
         </div>
+        {deleted && <p className="note">Akun dan data kamu sudah dihapus.</p>}
         <AuthForm next={next ?? '/studio'} />
         <p className="small faint">
           Dengan masuk kamu menyetujui Ketentuan Layanan dan Kebijakan Privasi. Layanan untuk pengguna berusia 18 tahun ke atas.
