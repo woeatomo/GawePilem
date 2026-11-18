@@ -10,6 +10,8 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': 'error',
+      // Generator di dalam method butuh alias `this`.
+      '@typescript-eslint/no-this-alias': 'off',
     },
   },
   {
