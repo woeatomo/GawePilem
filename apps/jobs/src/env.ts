@@ -16,6 +16,8 @@ export interface Env {
   /** Kosong = Rendi (api.rendi.dev, key dari /admin/secrets). Diisi = emulator lokal. */
   RENDER_BASE_URL?: string;
   RENDER_API_KEY?: string;
+  /** Target panjang segmen render (detik, default 120). Episode > 1,5× nilai ini dirender per segmen. */
+  RENDER_SEGMENT_SEC?: string;
 }
 
 export type { MediaJobData };

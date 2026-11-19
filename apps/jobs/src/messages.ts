@@ -10,7 +10,8 @@ export const internalSchema = z.discriminatedUnion('kind', [
     kind: z.literal('ffmpeg_poll'),
     jobId: z.string(),
     workspaceId: z.string(),
-    purpose: z.enum(['clip', 'render']),
+    /** segment = potongan video/audio master episode panjang (targetId = id render_segments). */
+    purpose: z.enum(['clip', 'render', 'segment']),
     targetId: z.string(),
     commandId: z.string(),
     key: z.string(),

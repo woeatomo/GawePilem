@@ -1,7 +1,7 @@
 import type { Ctx } from './ctx';
 
 const EXT: Record<string, string> = {
-  'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'video/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'text/plain': 'ass',
+  'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'video/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'text/plain': 'ass', 'video/mp2t': 'ts', 'audio/mp4': 'm4a',
 };
 export const extFor = (type: string) => EXT[type.split(';')[0]!.trim()] ?? 'bin';
 

@@ -36,6 +36,11 @@ export interface CompileOptions {
    * 'crop' = potong tengah memenuhi layar. Default 'crop' bila rasio sama.
    */
   reframe?: 'crop' | 'blur';
+  /**
+   * Bagian yang dirender: 'av' (default) = video + audio jadi MP4; 'video' = video saja (MPEG-TS, untuk segmen
+   * episode panjang yang lalu digabung tanpa re-encode); 'audio' = mix audio seluruh timeline saja (M4A).
+   */
+  parts?: 'av' | 'video' | 'audio';
 }
 
 export interface CompiledCommand {
@@ -64,6 +69,7 @@ export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand
   const { width: W, height: H } = outputSize(outAspect, o.quality);
   const blur = o.reframe === 'blur' && outAspect !== t.aspect;
   const duration = timelineDuration(t);
+  const parts = o.parts ?? 'av';
   const inputs: string[] = [];
   const filters: string[] = [];
   let n = 0;
@@ -80,7 +86,7 @@ export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand
 
   // ---------- video ----------
   const starts = clipStarts(t);
-  t.tracks.video.forEach((c, i) => {
+  if (parts !== 'audio') t.tracks.video.forEach((c, i) => {
     const ref = need(c.shotId, 'video');
     if (ref.kind === 'audio') throw new CompileError(`Aset ${c.shotId} bukan video/gambar`);
     const idx = addInput(ref, c.out);
@@ -101,7 +107,7 @@ export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand
     }
   });
   let vLabel = 'v0';
-  for (let i = 1; i < t.tracks.video.length; i++) {
+  for (let i = 1; parts !== 'audio' && i < t.tracks.video.length; i++) {
     const c = t.tracks.video[i]!;
     const out = `vx${i}`;
     if (c.transition === 'fade' || c.transition === 'dip') {
@@ -119,9 +125,18 @@ export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand
     const txt = o.watermark.replace(/[\\':,%[\]]/g, '');
     post.push(`drawtext=text='${txt}':fontcolor=white@0.55:fontsize=${Math.round(Math.min(W, H) * 0.03)}:x=w-tw-${Math.round(W * 0.04)}:y=${Math.round(H * 0.03)}`);
   }
-  filters.push(`[${vLabel}]${post.length ? post.join(',') : 'null'}[vout]`);
+  if (parts !== 'audio') filters.push(`[${vLabel}]${post.length ? post.join(',') : 'null'}[vout]`);
 
   // ---------- audio ----------
+  if (parts === 'video') {
+    const filterComplex = filters.join(';\n');
+    const args = [
+      '-hide_banner', '-y', '-nostdin', ...inputs, '-filter_complex', filterComplex, '-map', '[vout]', '-an',
+      '-c:v', 'libx264', '-preset', o.preset ?? 'medium', '-crf', String(o.crf ?? 20), '-pix_fmt', 'yuv420p', '-r', String(t.fps),
+      '-t', f3(duration), '-f', 'mpegts', '-progress', 'pipe:1', o.outputPath,
+    ];
+    return { args, duration, filterComplex };
+  }
   const dialogLabels: string[] = [];
   t.tracks.dialog.forEach((d, i) => {
     const idx = addInput(need(d.assetId, 'dialog'), 0);
@@ -179,6 +194,13 @@ export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand
   }
 
   const filterComplex = filters.join(';\n');
+  if (parts === 'audio') {
+    const args = [
+      '-hide_banner', '-y', '-nostdin', ...inputs, '-filter_complex', filterComplex, '-map', '[aout]', '-vn',
+      '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-t', f3(duration), '-progress', 'pipe:1', o.outputPath,
+    ];
+    return { args, duration, filterComplex };
+  }
   const args = [
     '-hide_banner', '-y', '-nostdin',
     ...inputs,

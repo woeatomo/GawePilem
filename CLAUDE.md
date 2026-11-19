@@ -70,6 +70,8 @@ Migrasi baru WAJIB revoke + grant eksplisit (Supabase memberi default privilege 
 
 Riset → Cerita & karakter → Naskah → Storyboard → Produksi visual → Audio → Editor → Publish.
 
+Durasi episode bebas, maksimal **20 menit** (dijaga di form, server, dan constraint DB). Episode panjang ditulis dan dipecah jadi shot **per scene** (aksi batch berurutan, satu konfirmasi biaya total).
+
 Kreator bisa review, edit, dan generate ulang di setiap tahap. Hasil tiap tahap disimpan sebagai aset project dan dipakai ulang lintas episode. Karakter (reference image multi-sudut + voice_id) **dikunci** dan wajib dipakai di setiap generate gambar, video, dan VO.
 
 ## Aturan kredit (wajib dipatuhi)
@@ -129,6 +131,10 @@ Gateway bertanggung jawab atas:
 - Gaya visual hanya didefinisikan di `packages/prompt-engine/src/styles.ts` (panduan LLM, prompt gambar, negative prompt, reference karakter). Id gaya tersimpan di `projects.visual_style`: jangan ganti id yang sudah ada.
 
 ## Editor & timeline JSON
+
+**Hybrid gerak:** setiap shot punya `motion` = `ai` (image-to-video, ditagih per detik) atau `camera` (gerak kamera virtual dari frame kunci lewat FFmpeg, tanpa biaya video AI; `camera_move`: push_in, pull_out, pan_left, pan_right, tilt_up, tilt_down, static). Template shot list menargetkan maks ±40% shot `ai`. Refund klip dihitung dari detik video AI saja.
+
+**Render per segmen:** timeline yang lebih panjang dari 1,5× `RENDER_SEGMENT_SEC` (default 120) dipecah di batas cut (`planSegments`), tiap segmen dirender video-saja (MPEG-TS) paralel di Rendi, audio master dirender sekali, lalu digabung tanpa re-encode (`muxCommand`). Status segmen di tabel `render_segments` (service role saja); gabung diklaim atomik lewat `renders.mux_claimed_at`.
 
 LLM tidak mengedit video secara langsung. LLM membaca dan mengusulkan perubahan pada timeline JSON, kreator menerima atau membatalkan, lalu worker mengompilasi timeline jadi perintah FFmpeg.
 
@@ -216,6 +222,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [x] 14 gaya visual (registri `VISUAL_STYLES` di prompt-engine: anime, chibi, kartun 2D, webtoon, donghua 3D, 3D keluarga, stop motion, wayang & batik, pixel art, dokumenter, dll.) + 9 preset project; genre anak otomatis 'made for kids' di YouTube
 
 ### Fase 3: Launch
+- [x] Episode panjang (maks 20 menit): shot list per scene, batch tulis/pecah scene, hybrid gerak kamera, render per segmen + gabung tanpa re-encode
 - [ ] Paket langganan, publish terjadwal, cross-post, analitik ringan
 
 ### Fase 4: Scale

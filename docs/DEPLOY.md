@@ -127,5 +127,7 @@ pnpm dev     # web :3000 + Worker job :8787 (Queue & R2 lokal) + emulator Rendi 
 
 - **Jangan mengganti `ENCRYPTION_KEY`** setelah ada data.
 - Render di Rendi memakai font yang tersedia di server mereka. Bila subtitle tampil dengan font cadangan, tambahkan file font sebagai input (fitur lanjutan).
-- Batas `max_command_run_seconds` render diset 6× durasi video (minimal 300 detik). Sesuaikan bila episode panjang dan paket Rendi mengizinkan.
+- Batas `max_command_run_seconds` render diset 6× durasi video (minimal 300 detik).
+- Episode panjang (sampai 20 menit) dirender per segmen ±2 menit secara paralel, lalu digabung tanpa re-encode. Atur panjang segmen dengan var `RENDER_SEGMENT_SEC` di `apps/jobs` (default 120). Satu episode 20 menit mengirim ±11 perintah sekaligus, jadi pastikan paket Rendi mengizinkan perintah paralel. Kalau tidak, perintah akan antre dan render tetap selesai, hanya lebih lama.
+- Gabung segmen memakai protokol `concat:` FFmpeg. Uji sekali dengan key Rendi asli sebelum dipakai customer (lokal sudah diuji dengan emulator dan FFmpeg).
 - Sebelum memakai key asli, cek ToS tiap provider soal reseller (lihat checklist di `CLAUDE.md`).

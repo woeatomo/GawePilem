@@ -10,3 +10,5 @@ AI_MOCK=1
 # Dev: emulator Rendi lokal (apps/render-local). Produksi: kosongkan → api.rendi.dev + RENDI_API_KEY di /admin/secrets.
 RENDER_BASE_URL=http://127.0.0.1:8790
 RENDER_API_KEY=local
+# Panjang segmen render (detik). Kecilkan (mis. 8) untuk menguji jalur render per segmen di E2E.
+RENDER_SEGMENT_SEC=120

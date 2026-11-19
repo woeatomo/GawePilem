@@ -1009,6 +1009,60 @@ export type Database = {
           },
         ];
       };
+      render_segments: {
+        Row: {
+          command_id: string | null;
+          created_at: string;
+          id: string;
+          idx: number;
+          kind: string;
+          range_end: number;
+          range_start: number;
+          render_id: string;
+          status: string;
+          updated_at: string;
+          url: string | null;
+          workspace_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          command_id?: string | null;
+          created_at?: string;
+          id?: string;
+          idx: number;
+          kind: string;
+          range_end: number;
+          range_start: number;
+          render_id: string;
+          status?: string;
+          updated_at?: string;
+          url?: string | null;
+          workspace_id: string;
+        };
+        Update: {
+          command_id?: string | null;
+          created_at?: string;
+          id?: string;
+          idx?: number;
+          kind?: string;
+          range_end?: number;
+          range_start?: number;
+          render_id?: string;
+          status?: string;
+          updated_at?: string;
+          url?: string | null;
+          workspace_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'render_segments_render_id_fkey';
+            columns: ['render_id'];
+            isOneToOne: false;
+            referencedRelation: 'renders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       renders: {
         Row: {
           aspect_ratio: Database['public']['Enums']['aspect_ratio'];
@@ -1018,11 +1072,13 @@ export type Database = {
           error: string | null;
           finished_at: string | null;
           id: string;
+          mux_claimed_at: string | null;
           progress: number;
           range_end: number | null;
           range_start: number | null;
           reframe: string | null;
           resolution: string;
+          segment_count: number;
           status: Database['public']['Enums']['asset_status'];
           timeline_id: string | null;
           url: string | null;
@@ -1038,11 +1094,13 @@ export type Database = {
           error?: string | null;
           finished_at?: string | null;
           id?: string;
+          mux_claimed_at?: string | null;
           progress?: number;
           range_end?: number | null;
           range_start?: number | null;
           reframe?: string | null;
           resolution: string;
+          segment_count?: number;
           status?: Database['public']['Enums']['asset_status'];
           timeline_id?: string | null;
           url?: string | null;
@@ -1057,11 +1115,13 @@ export type Database = {
           error?: string | null;
           finished_at?: string | null;
           id?: string;
+          mux_claimed_at?: string | null;
           progress?: number;
           range_end?: number | null;
           range_start?: number | null;
           reframe?: string | null;
           resolution?: string;
+          segment_count?: number;
           status?: Database['public']['Enums']['asset_status'];
           timeline_id?: string | null;
           url?: string | null;
