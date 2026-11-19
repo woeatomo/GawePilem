@@ -6,7 +6,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: { default: 'Pilem Studio', template: '%s · Pilem Studio' },
   description: 'Studio produksi film & serial AI dalam satu dashboard. Kamu yang sutradara, AI kru-nya.',
-  icons: { icon: '/icon.svg' },
+  icons: { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
 };
 export const viewport: Viewport = { themeColor: '#111318', colorScheme: 'dark' };
 
