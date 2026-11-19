@@ -8,6 +8,9 @@
  *   node scripts/deploy.mjs                 # semua langkah
  *   node scripts/deploy.mjs --dry-run       # tampilkan rencana & config yang akan ditulis, tanpa memanggil apa pun
  *   node scripts/deploy.mjs --only supabase # satu langkah: supabase | cloudflare | jobs | web | smoke | superadmin
+ *   --secrets-only   (web) hanya pasang rahasia Worker, tanpa build/deploy
+ *   --no-secrets     (web) build & deploy tanpa menyentuh rahasia (mis. dari GitHub Actions); anon key dari
+ *                    NEXT_PUBLIC_SUPABASE_ANON_KEY sehingga tidak butuh SUPABASE_ACCESS_TOKEN
  *
  * Variabel wajib:
  *   SUPABASE_ACCESS_TOKEN   token akun Supabase (Account → Access Tokens)
@@ -36,6 +39,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
 const ONLY = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
+const SECRETS_ONLY = args.includes('--secrets-only');
+const NO_SECRETS = args.includes('--no-secrets');
 const STEPS = ['supabase', 'cloudflare', 'jobs', 'web', 'smoke', 'superadmin'];
 if (ONLY && !STEPS.includes(ONLY)) fail(`--only harus salah satu dari: ${STEPS.join(', ')}`);
 
@@ -50,7 +55,7 @@ function fail(m) {
 const env = (k, d) => process.env[k] || d;
 const need = (k) => env(k) || (DRY ? `<${k}>` : fail(`Variabel ${k} wajib diisi`));
 const cfg = {
-  sbToken: need('SUPABASE_ACCESS_TOKEN'),
+  sbToken: NO_SECRETS && env('NEXT_PUBLIC_SUPABASE_ANON_KEY') ? null : need('SUPABASE_ACCESS_TOKEN'),
   ref: need('SUPABASE_PROJECT_REF'),
   cfToken: need('CLOUDFLARE_API_TOKEN'),
   account: need('CLOUDFLARE_ACCOUNT_ID'),
@@ -69,7 +74,9 @@ cfg.free = env('FREE_TIER') === '1';
 function platformSecrets() {
   const file = join(ROOT, '.deploy/secrets.env');
   const saved = existsSync(file) ? Object.fromEntries(readFileSync(file, 'utf8').split('\n').filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)])) : {};
+  const generated = !env('ENCRYPTION_KEY', saved.ENCRYPTION_KEY);
   const s = {
+    generated,
     ENCRYPTION_KEY: env('ENCRYPTION_KEY', saved.ENCRYPTION_KEY) || randomBytes(32).toString('base64'),
     WORKER_TOKEN: env('WORKER_TOKEN', saved.WORKER_TOKEN) || randomBytes(24).toString('hex'),
   };
@@ -208,6 +215,17 @@ function writeConfig(dir, conf) {
   return path;
 }
 
+/**
+ * Jangan pernah menimpa ENCRYPTION_KEY yang sudah terpasang dengan key baru: data terenkripsi
+ * (key BYOK, secret platform, token OAuth) tidak akan bisa dibuka lagi.
+ */
+async function guardExistingKey(worker, s) {
+  if (DRY || !s.generated) return;
+  const r = await cf('GET', `/accounts/${cfg.account}/workers/scripts/${worker}/secrets`).catch(() => null);
+  if ((r?.result ?? []).some((x) => x.name === 'ENCRYPTION_KEY'))
+    fail(`Worker ${worker} sudah punya ENCRYPTION_KEY, tapi .deploy/secrets.env tidak ada. Isi ENCRYPTION_KEY & WORKER_TOKEN dari salinan cadangan (env atau .deploy/secrets.env) lalu ulangi. Jangan buat key baru.`);
+}
+
 function putSecrets(dir, config, secrets) {
   if (DRY) return void console.log(`    $ wrangler secret bulk -c ${dir}/wrangler.production.json  (${Object.keys(secrets).join(', ')})`);
   const tmp = join(ROOT, '.deploy', `secrets-${Date.now()}.json`);
@@ -233,25 +251,31 @@ async function jobs() {
   const conf = writeConfig('apps/jobs', base);
   // Deploy dulu agar Worker ada, lalu isi rahasia (bulk membuat versi baru dengan rahasia terpasang).
   run('npx', ['wrangler', 'deploy', '-c', conf], { cwd: join(ROOT, 'apps/jobs') });
+  await guardExistingKey('atomo-jobs', s);
   putSecrets('apps/jobs', conf, { SUPABASE_SERVICE_ROLE_KEY: service, ENCRYPTION_KEY: s.ENCRYPTION_KEY, WORKER_TOKEN: s.WORKER_TOKEN });
   ok(`Worker job di https://${cfg.jobs}`);
 }
 
 async function web() {
-  log(`Web (${cfg.webWorker})`);
-  const { anon, service } = await supabaseKeys();
-  const s = platformSecrets();
-  const pub = { NEXT_PUBLIC_SUPABASE_URL: cfg.supabaseUrl, NEXT_PUBLIC_SUPABASE_ANON_KEY: anon };
+  log(`Web (${cfg.webWorker})${SECRETS_ONLY ? ' — rahasia saja' : NO_SECRETS ? ' — build & deploy saja' : ''}`);
+  const keys = NO_SECRETS && env('NEXT_PUBLIC_SUPABASE_ANON_KEY') ? { anon: env('NEXT_PUBLIC_SUPABASE_ANON_KEY'), service: null } : await supabaseKeys();
+  const pub = { NEXT_PUBLIC_SUPABASE_URL: cfg.supabaseUrl, NEXT_PUBLIC_SUPABASE_ANON_KEY: keys.anon };
   const webConf = productionConfig(join(ROOT, 'apps/web/wrangler.jsonc'), {
     ...pub, APP_URL: `https://${cfg.web}`, WORKER_URL: `https://${cfg.jobs}`, AI_MOCK: '0', PAYMENTS_SANDBOX: '0',
   }, cfg.web);
   webConf.name = cfg.webWorker;
   webConf.services = (webConf.services ?? []).map((s) => (s.binding === 'WORKER_SELF_REFERENCE' ? { ...s, service: cfg.webWorker } : s));
   const conf = writeConfig('apps/web', webConf);
-  // NEXT_PUBLIC_* ditanam saat build, jadi wajib ada di env build.
-  run('npx', ['opennextjs-cloudflare', 'build'], { cwd: join(ROOT, 'apps/web'), env: { ...pub, NODE_ENV: 'production' } });
-  run('npx', ['opennextjs-cloudflare', 'deploy', '-c', conf], { cwd: join(ROOT, 'apps/web'), env: pub });
-  putSecrets('apps/web', conf, { SUPABASE_SERVICE_ROLE_KEY: service, ENCRYPTION_KEY: s.ENCRYPTION_KEY, WORKER_TOKEN: s.WORKER_TOKEN });
+  if (!SECRETS_ONLY) {
+    // NEXT_PUBLIC_* ditanam saat build, jadi wajib ada di env build.
+    run('npx', ['opennextjs-cloudflare', 'build'], { cwd: join(ROOT, 'apps/web'), env: { ...pub, NODE_ENV: 'production' } });
+    run('npx', ['opennextjs-cloudflare', 'deploy', '-c', conf], { cwd: join(ROOT, 'apps/web'), env: pub });
+  }
+  if (!NO_SECRETS) {
+    const s = platformSecrets();
+    await guardExistingKey(cfg.webWorker, s);
+    putSecrets('apps/web', conf, { SUPABASE_SERVICE_ROLE_KEY: keys.service, ENCRYPTION_KEY: s.ENCRYPTION_KEY, WORKER_TOKEN: s.WORKER_TOKEN });
+  }
   ok(`Web di https://${cfg.web}`);
 }
 
