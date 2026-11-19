@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "atomo-film-studio",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "atomo-film-studio" }],
+  "observability": { "enabled": true },
+  // Variabel non-rahasia. Rahasia (SUPABASE_SERVICE_ROLE_KEY, ENCRYPTION_KEY, WORKER_TOKEN)
+  // diisi dengan: npx wrangler secret put <NAMA>
+  "vars": {
+    "AI_MOCK": "0",
+    "PAYMENTS_SANDBOX": "0",
+    "YOUTUBE_DAILY_UPLOADS": "100",
+    "YOUTUBE_AUDITED": "0",
+    "MIDTRANS_PRODUCTION": "0"
+  }
+}
