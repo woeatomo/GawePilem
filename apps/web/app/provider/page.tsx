@@ -3,6 +3,7 @@ import { CATEGORIES } from '@atomo/credits';
 import { MODELS } from '@atomo/ai-gateway';
 import { AccountPage, loadAccount } from '@/lib/account';
 import { env } from '@/lib/env';
+import { platformSecrets } from '@/lib/platform';
 import { ProviderForm } from './form';
 
 export const metadata: Metadata = { title: 'Provider AI' };
@@ -17,7 +18,8 @@ const PROVIDERS: Record<string, { id: string; name: string }[]> = {
 export default async function Provider() {
   const data = await loadAccount();
   const e = env();
-  const platform = { opencode: Boolean(e.OPENCODE_API_KEY), elevenlabs: Boolean(e.ELEVENLABS_API_KEY), fal: Boolean(e.FAL_KEY) };
+  const k = await platformSecrets().all();
+  const platform = { opencode: Boolean(k.OPENCODE_API_KEY), elevenlabs: Boolean(k.ELEVENLABS_API_KEY), fal: Boolean(k.FAL_KEY) };
   return (
     <AccountPage data={data} active="provider" title="Provider AI">
       <header className="vhead">

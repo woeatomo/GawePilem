@@ -8,6 +8,7 @@ import { StudioProvider } from '@/components/studio-context';
 import { JobWatcher } from '@/components/job-watcher';
 import { requireSession, type Session } from './auth';
 import { env } from './env';
+import { platformSecret } from './platform';
 import { loadProject, type ProjectBundle } from './project';
 import { loadPublicSettings, loadRates, type PublicSettings } from './settings';
 import { FORMAT_LABEL, STAGES, type StageId, type StageStatus } from './stages';
@@ -21,6 +22,8 @@ export interface StageData {
   settings: PublicSettings;
   balance: number;
   activeJobs: number;
+  /** Key platform untuk provider teks tersedia (DB atau env). */
+  textKeyReady: boolean;
 }
 
 export async function loadStage(params: Promise<{ projectId: string }>, searchParams: Promise<Record<string, string | string[] | undefined>>): Promise<StageData> {
@@ -34,7 +37,7 @@ export async function loadStage(params: Promise<{ projectId: string }>, searchPa
     getBalance(session.db, session.userId),
     session.db.from('jobs').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['queued', 'running']),
   ]);
-  return { session, bundle, rates, settings, balance, activeJobs: active.count ?? 0 };
+  return { session, bundle, rates, settings, balance, activeJobs: active.count ?? 0, textKeyReady: Boolean(await platformSecret('OPENCODE_API_KEY')) };
 }
 
 export function stageStatus(b: ProjectBundle): Record<StageId, StageStatus> {
@@ -64,13 +67,14 @@ export function Stage({ data, stage, children }: { data: StageData; stage: Stage
   const e = env();
   const mockAll = e.AI_MOCK;
   const naskah = settings.naskah;
-  const noKey = !mockAll && naskah.mode === 'saldo' && !e.OPENCODE_API_KEY;
+  const noKey = !mockAll && naskah.mode === 'saldo' && !data.textKeyReady;
   const aiLabel = mockAll ? 'AI: mode demo (mock)' : noKey ? 'AI: key platform belum di-set' : `AI: ${naskah.provider} · ${naskah.model}`;
   const name = STAGES.find((s) => s.id === stage)!.name;
   const clientSettings = Object.fromEntries(CATEGORIES.map((c) => [c, settings[c]])) as typeof settings;
   return (
     <Shell
       email={session.email}
+      superadmin={session.profile.is_superadmin}
       balance={balance}
       aiLabel={aiLabel}
       aiLive={!noKey}

@@ -3,6 +3,7 @@ import type { Job } from '@atomo/db';
 import { PublishError, youtube, type Tokens } from '@atomo/publisher';
 import { admin } from '../db';
 import { env } from '../env';
+import { secrets } from '../gateway';
 import { log, progress, type JobResult } from '../job';
 import { fetchAsset } from '../storage';
 
@@ -13,7 +14,8 @@ export async function publish(job: Job, publicationId: string): Promise<JobResul
   const { data: pub } = await admin.from('publications').select('*').eq('id', publicationId).single();
   if (!pub) throw new ProviderError('Publikasi tidak ditemukan', 'youtube', 'bad_request');
   if (pub.platform_video_id) return { output: { videoId: pub.platform_video_id, skipped: true } };
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) throw new ProviderError('Integrasi YouTube belum dikonfigurasi', 'youtube', 'auth');
+  const [clientId, clientSecret] = await Promise.all([secrets.get('GOOGLE_CLIENT_ID'), secrets.get('GOOGLE_CLIENT_SECRET')]);
+  if (!clientId || !clientSecret) throw new ProviderError('Integrasi YouTube belum dikonfigurasi', 'youtube', 'auth');
 
   // Kuota project Google per hari dibagi semua user: antrekan ulang bila habis.
   const today = new Date();
@@ -29,7 +31,7 @@ export async function publish(job: Job, publicationId: string): Promise<JobResul
   if (!acc) throw new ProviderError('Akun YouTube tidak ditemukan', 'youtube', 'bad_request');
   const aad = `${acc.workspace_id}:youtube:${acc.channel_id}`;
   let tokens = JSON.parse(decryptSecret(acc.encrypted_tokens, env.ENCRYPTION_KEY, aad)) as Tokens;
-  const client = { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, redirectUri: `${env.APP_URL}/api/oauth/youtube/callback` };
+  const client = { clientId, clientSecret, redirectUri: `${env.APP_URL}/api/oauth/youtube/callback` };
 
   try {
     if (youtube.needsRefresh(tokens)) {

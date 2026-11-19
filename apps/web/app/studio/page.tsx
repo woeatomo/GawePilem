@@ -17,7 +17,7 @@ export default async function Studio() {
   ]);
   const e = env();
   return (
-    <Shell email={s.email} balance={balance} aiLabel={e.AI_MOCK ? 'AI: mode demo (mock)' : 'AI siap'} aiLive active="studio" crumbs={<b>Semua project</b>}>
+    <Shell email={s.email} superadmin={s.profile.is_superadmin} balance={balance} aiLabel={e.AI_MOCK ? 'AI: mode demo (mock)' : 'AI siap'} aiLive active="studio" crumbs={<b>Semua project</b>}>
       <div className="wrap">
         <header className="vhead">
           <div>

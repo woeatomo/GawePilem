@@ -8,7 +8,7 @@ import { youtubeClient } from '@/lib/youtube';
 export async function GET(req: Request) {
   const s = await getSession();
   if (!s) return NextResponse.redirect(new URL('/login', req.url));
-  const c = youtubeClient();
+  const c = await youtubeClient();
   if (!c) return new Response('Integrasi YouTube belum dikonfigurasi (GOOGLE_CLIENT_ID/SECRET).', { status: 503 });
   const back = new URL(req.url).searchParams.get('back') ?? '/studio';
   const state = randomBytes(24).toString('base64url');

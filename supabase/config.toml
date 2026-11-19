@@ -28,3 +28,11 @@ enable_confirmations = false
 
 [storage]
 file_size_limit = "50MiB"
+
+# 2FA TOTP (Google Authenticator, Authy, dll.) — wajib untuk superadmin.
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

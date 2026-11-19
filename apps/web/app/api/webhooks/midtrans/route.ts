@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { basicAuth, mapStatus, MIDTRANS_URL, notificationSchema, parseGrossAmount, verifySignature } from '@atomo/credits/midtrans';
 import { audit } from '@atomo/db';
 import { env } from '@/lib/env';
+import { platformSecret } from '@/lib/platform';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -15,17 +16,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 export async function POST(req: Request) {
   const e = env();
-  if (!e.MIDTRANS_SERVER_KEY) return new NextResponse('not configured', { status: 503 });
+  const serverKey = await platformSecret('MIDTRANS_SERVER_KEY');
+  if (!serverKey) return new NextResponse('not configured', { status: 503 });
   const parsed = notificationSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return new NextResponse('bad request', { status: 400 });
   const n = parsed.data;
-  if (!verifySignature(n, e.MIDTRANS_SERVER_KEY)) return new NextResponse('invalid signature', { status: 401 });
+  if (!verifySignature(n, serverKey)) return new NextResponse('invalid signature', { status: 401 });
   if (!UUID.test(n.order_id)) return NextResponse.json({ ok: true, ignored: 'unknown order format' });
 
   // Jangan percaya isi notifikasi saja: ambil status terkini langsung dari Midtrans.
   const urls = e.MIDTRANS_PRODUCTION ? MIDTRANS_URL.production : MIDTRANS_URL.sandbox;
   const st = await fetch(`${urls.api}/${encodeURIComponent(n.order_id)}/status`, {
-    headers: { authorization: basicAuth(e.MIDTRANS_SERVER_KEY), accept: 'application/json' },
+    headers: { authorization: basicAuth(serverKey), accept: 'application/json' },
     signal: AbortSignal.timeout(15_000),
   }).catch(() => null);
   if (!st?.ok) return new NextResponse('status check failed', { status: 502 }); // Midtrans akan mengirim ulang

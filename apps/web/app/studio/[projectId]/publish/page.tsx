@@ -30,7 +30,7 @@ export default async function Page(props: { params: Promise<{ projectId: string 
         render={ready ? { id: ready.id, url: ready.url, aspect: ready.aspect_ratio, duration: Number(ready.duration_sec ?? 0) } : null}
         accounts={(accounts ?? []).map((a) => ({ id: a.id, platform: a.platform, name: a.channel_name, avatar: a.avatar_url, status: a.status, audited: a.audited, error: a.last_error }))}
         pubs={(pubs ?? []).map((p) => ({ id: p.id, variant: p.variant, status: p.status, videoId: p.platform_video_id, privacy: p.privacy, error: p.error, at: p.created_at, title: String((p.metadata as { title?: string })?.title ?? '') }))}
-        youtubeConfigured={Boolean(youtubeClient())}
+        youtubeConfigured={Boolean(await youtubeClient())}
         quota={{ used: usedToday ?? 0, limit: e.YOUTUBE_DAILY_UPLOADS }}
         plan={data.session.profile.plan}
         flash={typeof sp.yt === 'string' ? sp.yt : null}

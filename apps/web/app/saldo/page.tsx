@@ -3,6 +3,7 @@ import { CATEGORIES, CATEGORY_META, TIER_LABEL, TIERS, TOPUP_PACKS, VIDEO_RESOLU
 import { fmt, rupiah } from '@/lib/format';
 import { AccountPage, loadAccount } from '@/lib/account';
 import { env } from '@/lib/env';
+import { platformSecret } from '@/lib/platform';
 import { TopupButtons } from './topup';
 
 export const metadata: Metadata = { title: 'Saldo & tarif' };
@@ -50,7 +51,7 @@ export default async function Saldo() {
         </section>
         <section className="card">
           <h2>Top-up</h2>
-          <TopupButtons packs={TOPUP_PACKS.map((p) => ({ ...p }))} sandbox={env().PAYMENTS_SANDBOX} online={Boolean(env().MIDTRANS_SERVER_KEY)} />
+          <TopupButtons packs={TOPUP_PACKS.map((p) => ({ ...p }))} sandbox={env().PAYMENTS_SANDBOX} online={Boolean(await platformSecret('MIDTRANS_SERVER_KEY'))} />
           {pendingOrders.length > 0 && (
             <p className="note" style={{ marginTop: 10 }}>
               {pendingOrders.length} pembayaran menunggu konfirmasi. Kredit masuk otomatis setelah pembayaran terverifikasi.

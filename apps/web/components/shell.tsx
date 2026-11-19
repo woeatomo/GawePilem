@@ -15,6 +15,7 @@ export interface ShellProps {
   project?: { id: string; title: string; subtitle: string; status: Record<StageId, StageStatus>; episode: number };
   active?: string;
   email: string;
+  superadmin?: boolean;
 }
 
 export function Shell(p: ShellProps) {
@@ -37,6 +38,7 @@ export function Shell(p: ShellProps) {
         <StageNav
           {...(p.project ? { projectId: p.project.id, status: p.project.status, episode: p.project.episode } : {})}
           {...(p.active ? { active: p.active } : {})}
+          superadmin={Boolean(p.superadmin)}
         />
         <div className="rail-foot">
           <span title={p.email} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.email}</span>

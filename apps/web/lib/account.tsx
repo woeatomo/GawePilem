@@ -18,7 +18,7 @@ export async function loadAccount() {
 export function AccountPage({ data, active, title, children }: { data: Awaited<ReturnType<typeof loadAccount>>; active: string; title: string; children: ReactNode }) {
   const e = env();
   return (
-    <Shell email={data.session.email} balance={data.balance} aiLabel={e.AI_MOCK ? 'AI: mode demo (mock)' : 'AI siap'} aiLive active={active} crumbs={<b>{title}</b>}>
+    <Shell email={data.session.email} superadmin={data.session.profile.is_superadmin} balance={data.balance} aiLabel={e.AI_MOCK ? 'AI: mode demo (mock)' : 'AI siap'} aiLive active={active} crumbs={<b>{title}</b>}>
       <StudioProvider value={{ projectId: '', episode: 1, rates: data.rates, settings: Object.fromEntries(CATEGORIES.map((c) => [c, data.settings[c]])) as typeof data.settings, balance: data.balance }}>
         <div className="wrap">{children}</div>
       </StudioProvider>

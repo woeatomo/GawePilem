@@ -154,6 +154,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@atomo/ai-gateway':
+        specifier: workspace:*
+        version: link:../ai-gateway
       '@atomo/credits':
         specifier: workspace:*
         version: link:../credits

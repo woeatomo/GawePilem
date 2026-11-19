@@ -1,4 +1,6 @@
 import 'server-only';
+import { createHash } from 'node:crypto';
+import { platformSecrets } from './platform';
 import { AIGateway, DEFAULT_MODEL, decryptSecret, type ProviderSetting } from '@atomo/ai-gateway';
 import { buildRateTable, CATEGORIES, type Category, type RateTable } from '@atomo/credits';
 import type { DB } from '@atomo/db';
@@ -56,20 +58,28 @@ export async function loadRates(db: DB): Promise<RateTable> {
   return buildRateTable(data.map((r) => ({ category: r.category, tier: r.tier, creditsPerUnit: Number(r.credits_per_unit) })));
 }
 
-let gw: AIGateway | null = null;
-export function gateway(): AIGateway {
-  if (!gw) {
-    const e = env();
-    gw = new AIGateway({
-      platformKeys: {
-        ...(e.OPENCODE_API_KEY ? { opencode: e.OPENCODE_API_KEY } : {}),
-        ...(e.ELEVENLABS_API_KEY ? { elevenlabs: e.ELEVENLABS_API_KEY } : {}),
-        ...(e.FAL_KEY ? { fal: e.FAL_KEY } : {}),
-      },
-      decrypt: (enc, aad) => decryptSecret(enc, e.ENCRYPTION_KEY, aad),
-      mock: e.AI_MOCK,
-      mockResponder,
-    });
+let gw: { sig: string; gateway: AIGateway } | null = null;
+
+/** Gateway AI dengan key platform terbaru (dibangun ulang bila superadmin mengganti key). */
+export async function gateway(): Promise<AIGateway> {
+  const e = env();
+  const k = await platformSecrets().all();
+  const keys = {
+    ...(k.OPENCODE_API_KEY ? { opencode: k.OPENCODE_API_KEY } : {}),
+    ...(k.ELEVENLABS_API_KEY ? { elevenlabs: k.ELEVENLABS_API_KEY } : {}),
+    ...(k.FAL_KEY ? { fal: k.FAL_KEY } : {}),
+  };
+  const sig = createHash('sha256').update(JSON.stringify(keys)).digest('hex');
+  if (!gw || gw.sig !== sig) {
+    gw = {
+      sig,
+      gateway: new AIGateway({
+        platformKeys: keys,
+        decrypt: (enc, aad) => decryptSecret(enc, e.ENCRYPTION_KEY, aad),
+        mock: e.AI_MOCK,
+        mockResponder,
+      }),
+    };
   }
-  return gw;
+  return gw.gateway;
 }

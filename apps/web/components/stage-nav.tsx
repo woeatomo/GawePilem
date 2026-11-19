@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { STAGES, type StageId, type StageStatus } from '@/lib/stages';
 
-export function StageNav({ projectId, status, episode, active }: { projectId?: string; status?: Record<StageId, StageStatus>; episode?: number; active?: string }) {
+export function StageNav({ projectId, status, episode, active, superadmin }: { projectId?: string; status?: Record<StageId, StageStatus>; episode?: number; active?: string; superadmin?: boolean }) {
   const path = usePathname();
   const q = episode && episode > 1 ? `?ep=${episode}` : '';
   return (
@@ -37,6 +37,11 @@ export function StageNav({ projectId, status, episode, active }: { projectId?: s
       <Link href="/akun" className={active === 'akun' ? 'on' : ''}>
         <span className="ico">◇</span>Akun & privasi
       </Link>
+      {superadmin && (
+        <Link href="/admin/secrets" className={active === 'admin' ? 'on' : ''}>
+          <span className="ico">⚿</span>Secret platform
+        </Link>
+      )}
     </nav>
   );
 }

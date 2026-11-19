@@ -13,7 +13,7 @@ import { youtubeClient } from '@/lib/youtube';
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const s = await getSession();
-  const c = youtubeClient();
+  const c = await youtubeClient();
   const jar = await cookies();
   const raw = jar.get('yt_oauth')?.value;
   jar.delete({ name: 'yt_oauth', path: '/api/oauth/youtube' });

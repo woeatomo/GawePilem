@@ -12,6 +12,7 @@
   "dependencies": {
     "zod": "^4.1.0",
     "@atomo/credits": "workspace:*",
-    "@supabase/supabase-js": "^2.119.0"
+    "@supabase/supabase-js": "^2.119.0",
+    "@atomo/ai-gateway": "workspace:*"
   }
 }

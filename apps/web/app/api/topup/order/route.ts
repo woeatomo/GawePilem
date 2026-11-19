@@ -5,6 +5,7 @@ import { basicAuth, MIDTRANS_URL, snapRequest } from '@atomo/credits/midtrans';
 import { audit } from '@atomo/db';
 import { getSession } from '@/lib/auth';
 import { env } from '@/lib/env';
+import { platformSecret } from '@/lib/platform';
 import { jsonError } from '@/lib/http';
 import { clientIp, rateLimit } from '@/lib/ratelimit';
 import { supabaseAdmin } from '@/lib/supabase/server';
@@ -14,7 +15,8 @@ export const runtime = 'nodejs';
 /** Buat pesanan top-up dan transaksi Midtrans Snap. Kredit baru masuk lewat webhook yang terverifikasi. */
 export async function POST(req: Request) {
   const e = env();
-  if (!e.MIDTRANS_SERVER_KEY) return jsonError(503, 'not_configured', 'Pembayaran online belum dikonfigurasi.');
+  const serverKey = await platformSecret('MIDTRANS_SERVER_KEY');
+  if (!serverKey) return jsonError(503, 'not_configured', 'Pembayaran online belum dikonfigurasi.');
   const s = await getSession();
   if (!s) return jsonError(401, 'unauthorized', 'Silakan masuk dulu.');
   if (await rateLimit(`order:${s.userId}`, 5, 300)) return jsonError(429, 'rate_limited', 'Terlalu banyak pesanan. Coba lagi beberapa menit lagi.');
@@ -33,7 +35,7 @@ export async function POST(req: Request) {
   const urls = e.MIDTRANS_PRODUCTION ? MIDTRANS_URL.production : MIDTRANS_URL.sandbox;
   const res = await fetch(urls.snap, {
     method: 'POST',
-    headers: { authorization: basicAuth(e.MIDTRANS_SERVER_KEY), 'content-type': 'application/json', accept: 'application/json' },
+    headers: { authorization: basicAuth(serverKey), 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify(snapRequest(order.id, pack, s.email, `${e.APP_URL}/saldo?order=${order.id}`)),
     signal: AbortSignal.timeout(20_000),
   }).catch(() => null);

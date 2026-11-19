@@ -624,6 +624,39 @@ export type Database = {
           },
         ];
       };
+      platform_secrets: {
+        Row: {
+          encrypted_value: string;
+          hint: string;
+          name: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          encrypted_value: string;
+          hint?: string;
+          name: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          encrypted_value?: string;
+          hint?: string;
+          name?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'platform_secrets_updated_by_fkey';
+            columns: ['updated_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           age_confirmed_at: string | null;
@@ -634,6 +667,7 @@ export type Database = {
           email: string;
           id: string;
           is_admin: boolean;
+          is_superadmin: boolean;
           locale: string;
           plan: Database['public']['Enums']['plan_tier'];
           updated_at: string;
@@ -648,6 +682,7 @@ export type Database = {
           email: string;
           id: string;
           is_admin?: boolean;
+          is_superadmin?: boolean;
           locale?: string;
           plan?: Database['public']['Enums']['plan_tier'];
           updated_at?: string;
@@ -661,6 +696,7 @@ export type Database = {
           email?: string;
           id?: string;
           is_admin?: boolean;
+          is_superadmin?: boolean;
           locale?: string;
           plan?: Database['public']['Enums']['plan_tier'];
           updated_at?: string;
@@ -1448,6 +1484,7 @@ export type Database = {
         Args: { p_amount: number; p_job_id: string; p_now: string; p_user_id: string };
         Returns: undefined;
       };
+      _require_secret_admin: { Args: { p_step_up: boolean }; Returns: undefined };
       can_edit_workspace: { Args: { ws: string }; Returns: boolean };
       charge_and_enqueue: {
         Args: {
@@ -1510,9 +1547,11 @@ export type Database = {
         Returns: string;
       };
       dearmor: { Args: { '': string }; Returns: string };
+      delete_platform_secret: { Args: { p_name: string }; Returns: undefined };
       expire_due_credits: { Args: { p_now?: string; p_user_id: string }; Returns: number };
       gen_random_uuid: { Args: Record<PropertyKey, never>; Returns: string };
       gen_salt: { Args: { '': string }; Returns: string };
+      is_superadmin_aal2: { Args: Record<PropertyKey, never>; Returns: boolean };
       is_workspace_member: { Args: { ws: string }; Returns: boolean };
       job_fail: { Args: { p_error: string; p_job_id: string }; Returns: number };
       job_finish_partial: {
@@ -1588,8 +1627,22 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      list_platform_secrets: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          hint: string;
+          name: string;
+          updated_at: string;
+          updated_by_email: string;
+        }[];
+      };
+      mfa_recent: { Args: { p_seconds?: number }; Returns: boolean };
       pgp_armor_headers: { Args: { '': string }; Returns: Record<string, unknown>[] };
       refund_job: { Args: { p_job_id: string; p_reason?: string }; Returns: number };
+      set_platform_secret: {
+        Args: { p_encrypted: string; p_hint: string; p_name: string };
+        Returns: undefined;
+      };
       spendable_credits: { Args: { p_now?: string; p_user_id: string }; Returns: number };
       topup_order_closed: {
         Args: { p_order_id: string; p_status: Database['public']['Enums']['order_status'] };

@@ -164,6 +164,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - Blokir pembuatan karakter yang meniru wajah atau suara orang nyata tanpa consent, dan blokir karakter IP terkenal.
 - Rate limit per user dan per IP di semua route AI.
 - Audit log untuk publish, perubahan billing, dan perubahan provider.
+- Key asli platform (provider AI, Midtrans, Google OAuth) diatur superadmin di `/admin/secrets`: wajib 2FA TOTP (aal2), ubah butuh verifikasi 2FA ≤ 15 menit, terenkripsi di `platform_secrets`, dibaca lewat `PlatformSecrets` (`packages/db`). Superadmin hanya diangkat lewat `scripts/make-superadmin.sh`. `ENCRYPTION_KEY` dan `SUPABASE_SERVICE_ROLE_KEY` tetap di env.
 - Kepatuhan Indonesia: UU PDP (consent, hapus akun dan data), mekanisme takedown, usia minimal 18 tahun.
 
 ---
@@ -202,6 +203,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [ ] Subtitle otomatis dari speech-to-text (sekarang subtitle diambil dari naskah)
 - [x] Moderasi sebelum publish (prefilter teks; antrean review manual belum ada UI)
 - [x] Hapus akun & ekspor data (UU PDP)
+- [x] Halaman secret platform untuk superadmin dengan 2FA TOTP (`/admin/secrets`)
 
 ### Fase 3: Launch
 - [ ] Paket langganan, publish terjadwal, cross-post, analitik ringan

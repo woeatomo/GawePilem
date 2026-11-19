@@ -128,3 +128,4 @@ export async function audit(
   });
 }
 export * from './queue';
+export * from './secrets';

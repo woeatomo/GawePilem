@@ -45,6 +45,18 @@ pnpm build
 bash scripts/gen-db-types.sh   # regenerate packages/db/src/database.types.ts dari migrasi
 ```
 
+## Secret platform (key asli)
+
+Key provider AI, Midtrans, dan Google OAuth diatur di **`/admin/secrets`**, bukan di file `.env` produksi:
+
+1. Angkat superadmin lewat akses database: `bash scripts/make-superadmin.sh admin@contoh.id` (tidak ada jalur web untuk menaikkan hak akses).
+2. Superadmin membuka `/admin/secrets` dan wajib mengaktifkan **2FA TOTP** (Google Authenticator, Authy, 1Password).
+3. Nilai dienkripsi AES-256-GCM (terikat ke nama secret); database hanya menyimpan ciphertext, browser hanya melihat 4 karakter terakhir.
+4. Database sendiri menolak perubahan bila pemanggil bukan superadmin dengan sesi 2FA (`aal2`), atau bila verifikasi 2FA terakhir lebih dari 15 menit lalu. Setiap perubahan masuk audit log.
+5. Web memakai nilai baru seketika, worker paling lambat 60 detik. Nilai env dipakai bila secret belum diisi di halaman itu.
+
+`ENCRYPTION_KEY` dan `SUPABASE_SERVICE_ROLE_KEY` tetap di env server karena dibutuhkan untuk membuka secret ini.
+
 ## Aturan uang (ringkas)
 
 - Biaya dihitung ulang di server dari tabel `rates`; client mengirim `expectedTotal` dan ditolak bila tarif berubah.

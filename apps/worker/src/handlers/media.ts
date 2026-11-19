@@ -2,7 +2,7 @@ import { ProviderError, type CharacterReference } from '@atomo/ai-gateway';
 import type { Job, Row } from '@atomo/db';
 import { extractDialog } from '@atomo/prompt-engine';
 import { admin } from '../db';
-import { gateway, settingFor } from '../gateway';
+import { getGateway, settingFor } from '../gateway';
 import { log, progress, type JobResult } from '../job';
 import { extFor, fetchAsset, publicUrl, storage } from '../storage';
 import { stillToClip } from './ffmpeg';
@@ -47,7 +47,7 @@ export async function charref(job: Job, characterId: string): Promise<JobResult>
     const prompt = `Character reference sheet. ${a.prompt}. Original fictional character, Indonesian, age ${c.age ?? 'adult'}. ${c.look}. Plain dark studio background, soft key light. ${style}. Not a real person, not a celebrity.`;
     // Sudut 2+ memakai sudut depan sebagai reference supaya wajah konsisten.
     const characters: CharacterReference[] = refs[0] ? [{ characterId: c.id, name: c.name, imageUrls: [publicUrl(refs[0].url)] }] : [];
-    const { images } = await gateway.generateImage(setting, { prompt, aspect: '1:1', seed, characters });
+    const { images } = await (await getGateway()).generateImage(setting, { prompt, aspect: '1:1', seed, characters });
     const url = await store(job.workspace_id, `characters/${c.id}/${job.id}-${i}`, images[0]!.url);
     refs.push({ angle: a.angle, url });
     await progress(job.id, ((i + 1) / ANGLES.length) * 100);
@@ -92,7 +92,7 @@ export async function keyframes(job: Job, shotIds: string[]): Promise<JobResult>
       await admin.from('shots').update({ keyframe_status: 'running' }).eq('id', s.id);
       const { image } = shotPrompt(s);
       const characters = await lockedRefs(s.character_ids);
-      const { images } = await gateway.generateImage(setting, {
+      const { images } = await (await getGateway()).generateImage(setting, {
         prompt: `${image}. ${style}. Shot type ${s.shot_type}.`,
         negativePrompt: 'text, watermark, logo, extra fingers, deformed face, celebrity likeness',
         aspect: p.aspect_ratio,
@@ -129,13 +129,13 @@ export async function clips(job: Job, shotIds: string[]): Promise<JobResult> {
       if (!s.approved || !s.keyframe_url) throw new ProviderError('Shot belum disetujui atau belum punya frame kunci', 'worker', 'bad_request');
       await admin.from('shots').update({ clip_status: 'running', clip_progress: 5 }).eq('id', s.id);
       const { motion } = shotPrompt(s);
-      const { handle } = await gateway.startVideo(setting, {
+      const { handle } = await (await getGateway()).startVideo(setting, {
         imageUrl: publicUrl(s.keyframe_url), prompt: motion, durationSec: Number(s.duration_sec), aspect: p.aspect_ratio, resolution,
       });
       let url: string | undefined;
       const deadline = Date.now() + 15 * 60_000;
       while (Date.now() < deadline) {
-        const st = await gateway.videoStatus(setting, handle);
+        const st = await (await getGateway()).videoStatus(setting, handle);
         await admin.from('shots').update({ clip_progress: Math.max(5, st.progress) }).eq('id', s.id);
         if (st.state === 'succeeded') {
           url = st.videoUrl;
@@ -195,7 +195,7 @@ export async function voiceOver(job: Job, episodeId: string, lineIds: string[]):
       const c = chars?.find((x) => l.character.toLowerCase().includes(x.name.toLowerCase()));
       if (!c) throw new ProviderError(`Tokoh ${l.character} tidak ada di sheet karakter`, 'worker', 'bad_request');
       if (!c.locked_at || !c.voice_id) throw new ProviderError(`Suara ${c.name} belum dikunci`, 'worker', 'bad_request');
-      const { audio } = await gateway.synthesize(setting, { text: l.text, voiceId: c.voice_id, languageCode: p.language });
+      const { audio } = await (await getGateway()).synthesize(setting, { text: l.text, voiceId: c.voice_id, languageCode: p.language });
       const ext = audio.mimeType === 'audio/wav' ? 'wav' : 'mp3';
       const url = await storage.put(`${job.workspace_id}/audio/${episodeId}/${l.id}-${job.id}.${ext}`, audio.data, audio.mimeType);
       await admin.from('audio_tracks').delete().eq('episode_id', episodeId).eq('line_id', l.id);

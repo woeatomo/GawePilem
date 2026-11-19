@@ -180,7 +180,7 @@ export async function executeAction(input: ExecuteInput): Promise<ExecuteResult>
           }
         };
         try {
-          const st = gateway().textStream(setting, { ...req, stream: true });
+          const st = (await gateway()).textStream(setting, { ...req, stream: true });
           let text = '';
           for await (const d of st) {
             text += d;
@@ -210,7 +210,7 @@ export async function executeAction(input: ExecuteInput): Promise<ExecuteResult>
 
   try {
     const schema = OUTPUT_SCHEMAS[action as keyof typeof OUTPUT_SCHEMAS];
-    const r = await gateway().structured(setting, req, schema);
+    const r = await (await gateway()).structured(setting, req, schema);
     const saved = await persistStructured(action, params, b, r.data, s);
     await jobSucceed(admin, job.id, { repaired: r.repaired, model: r.meta.model, summary: saved });
     return { kind: 'json', job: { ...job, status: 'succeeded' }, data: r.data };
