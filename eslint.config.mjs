@@ -26,6 +26,11 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   {
+    // Skrip operasional Node (ESM), mis. scripts/deploy.mjs.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { sourceType: 'module', globals: { process: 'readonly', console: 'readonly', fetch: 'readonly', setTimeout: 'readonly' } },
+  },
+  {
     files: ['apps/web/**/*.{ts,tsx}'],
     plugins: { '@next/next': nextPlugin, 'react-hooks': reactHooks },
     rules: {
