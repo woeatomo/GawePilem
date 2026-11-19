@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ProviderError } from '@atomo/ai-gateway';
 import type { Job } from '@atomo/db';
-import { compileTimeline, outputSize, timelineSchema, toAss, type AssetRef, type Quality } from '@atomo/timeline';
+import { compileTimeline, outputSize, sliceTimeline, timelineSchema, toAss, type AssetRef, type Quality, type Timeline } from '@atomo/timeline';
 import { admin } from '../db';
 import { progress, type JobResult } from '../job';
 import { fetchAsset, storage } from '../storage';
@@ -18,7 +18,11 @@ export async function render(job: Job, renderId: string): Promise<JobResult> {
   if (!r) throw new ProviderError('Render tidak ditemukan', 'worker', 'bad_request');
   if (r.status === 'ready' && r.url) return { output: { url: r.url, skipped: true } };
   const { data: tl } = await admin.from('timelines').select('data').eq('id', r.timeline_id!).single();
-  const timeline = timelineSchema.parse(tl?.data);
+  const full = timelineSchema.parse(tl?.data);
+  // Teaser: potong rentang waktu dari timeline master (mis. 9:16 untuk Shorts dari episode 16:9).
+  const timeline: Timeline =
+    r.variant === 'teaser' && r.range_start !== null && r.range_end !== null ? sliceTimeline(full, Number(r.range_start), Number(r.range_end)) : full;
+  const outAspect = r.aspect_ratio;
   const [{ data: shots }, { data: audio }, { data: ep }] = await Promise.all([
     admin.from('shots').select('id, clip_url, keyframe_url').eq('episode_id', r.episode_id),
     admin.from('audio_tracks').select('id, url').eq('episode_id', r.episode_id),
@@ -50,15 +54,16 @@ export async function render(job: Job, renderId: string): Promise<JobResult> {
       await download(d.assetId, t.url, 'audio', t.url.endsWith('.wav') ? 'wav' : 'mp3');
     }
     const quality = (r.resolution as Quality) ?? '720p';
-    const size = outputSize(timeline.aspect, quality);
+    const size = outputSize(outAspect, quality);
     let subtitlePath: string | undefined;
     if (timeline.tracks.subtitle.length) {
       subtitlePath = join(dir, 'subs.ass');
-      await writeFile(subtitlePath, toAss(timeline.tracks.subtitle, size, { karaoke: timeline.aspect === '9:16' }));
+      await writeFile(subtitlePath, toAss(timeline.tracks.subtitle, size, { karaoke: outAspect === '9:16' }));
     }
     const out = join(dir, 'out.mp4');
     const cmd = compileTimeline(timeline, {
       assets, outputPath: out, quality, ...(subtitlePath ? { subtitlePath } : {}),
+      outputAspect: outAspect, reframe: (r.reframe as 'crop' | 'blur' | null) ?? 'crop',
       ...(plan === 'free' ? { watermark: 'Atomo Film Studio' } : {}),
     });
     let lastPct = 0;
@@ -74,7 +79,7 @@ export async function render(job: Job, renderId: string): Promise<JobResult> {
     const title = (ep?.projects as unknown as { title: string } | null)?.title ?? 'render';
     const url = await storage.put(`${r.workspace_id}/renders/${r.id}.mp4`, data, 'video/mp4');
     await admin.from('renders').update({ status: 'ready', progress: 100, url, duration_sec: cmd.duration, finished_at: new Date().toISOString() }).eq('id', r.id);
-    await admin.from('episodes').update({ status: 'ready' }).eq('id', r.episode_id);
+    if (r.variant === 'master') await admin.from('episodes').update({ status: 'ready' }).eq('id', r.episode_id);
     return { output: { url, bytes: data.byteLength, duration: cmd.duration, title } };
   } catch (e) {
     await admin.from('renders').update({ status: 'failed', error: (e as Error).message.slice(0, 1000) }).eq('id', r.id);

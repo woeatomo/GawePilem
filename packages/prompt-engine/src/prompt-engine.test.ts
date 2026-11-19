@@ -43,6 +43,16 @@ describe('buildPrompt', () => {
     expect(seeds.size).toBeGreaterThan(5);
   });
 
+  it('gaya anime: model sheet karakter & key frame anime di shot list', () => {
+    const anime = { ...project, style: 'anime', genre: 'fantasi', format: 'serial', aspect: '16:9' as const };
+    const chars = buildPrompt({ stage: 'characters', project: anime }).messages[1]!.content;
+    expect(chars).toMatch(/model sheet/);
+    expect(chars).toMatch(/Fantasi:/);
+    expect(chars).toMatch(/Hindari meniru desain karakter/);
+    expect(buildPrompt({ stage: 'shotlist', project: anime }).messages[1]!.content).toMatch(/anime key frame/);
+    expect(buildPrompt({ stage: 'shotlist', project }).messages[1]!.content).toMatch(/sinematik realistis/);
+  });
+
   it('episode sebelumnya disebut agar tidak diulang', () => {
     const p = buildPrompt({ stage: 'outline', project: { ...project, previousEpisodes: ['Eps 1: Gembok'] } });
     expect(p.messages[1]!.content).toContain('Eps 1: Gembok');

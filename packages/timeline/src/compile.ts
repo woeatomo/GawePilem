@@ -29,6 +29,13 @@ export interface CompileOptions {
   preset?: string;
   /** Normalisasi loudness ke -14 LUFS (standar platform sosial). */
   loudnorm?: boolean;
+  /** Rasio keluaran bila berbeda dari timeline (mis. versi 9:16 dari master 16:9). */
+  outputAspect?: Timeline['aspect'];
+  /**
+   * Cara mengubah rasio: 'blur' = gambar utuh di atas latar blur (tidak ada yang terpotong),
+   * 'crop' = potong tengah memenuhi layar. Default 'crop' bila rasio sama.
+   */
+  reframe?: 'crop' | 'blur';
 }
 
 export interface CompiledCommand {
@@ -53,7 +60,9 @@ export function escapeFilterPath(p: string): string {
  * transisi xfade. Audio: dialog (adelay), musik dengan ducking sidechain, sfx, lalu amix.
  */
 export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand {
-  const { width: W, height: H } = outputSize(t.aspect, o.quality);
+  const outAspect = o.outputAspect ?? t.aspect;
+  const { width: W, height: H } = outputSize(outAspect, o.quality);
+  const blur = o.reframe === 'blur' && outAspect !== t.aspect;
   const duration = timelineDuration(t);
   const inputs: string[] = [];
   const filters: string[] = [];
@@ -76,10 +85,20 @@ export function compileTimeline(t: Timeline, o: CompileOptions): CompiledCommand
     if (ref.kind === 'audio') throw new CompileError(`Aset ${c.shotId} bukan video/gambar`);
     const idx = addInput(ref, c.out);
     const len = c.out - c.in;
-    filters.push(
-      `[${idx}:v]tpad=stop_mode=clone:stop_duration=${f3(len + 1)},trim=start=${f3(c.in)}:duration=${f3(len)},setpts=PTS-STARTPTS,` +
-        `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=${t.fps},format=yuv420p,settb=AVTB[v${i}]`,
-    );
+    const base = `[${idx}:v]tpad=stop_mode=clone:stop_duration=${f3(len + 1)},trim=start=${f3(c.in)}:duration=${f3(len)},setpts=PTS-STARTPTS`;
+    const tail = `setsar=1,fps=${t.fps},format=yuv420p,settb=AVTB[v${i}]`;
+    if (blur) {
+      // Latar: versi yang sama diperbesar memenuhi layar lalu diblur; depan: gambar utuh di tengah.
+      const sb = Math.max(10, Math.round(Math.min(W, H) / 24));
+      filters.push(
+        `${base},split=2[bg${i}][fg${i}]`,
+        `[bg${i}]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=${sb}:2,eq=brightness=-0.08[bgb${i}]`,
+        `[fg${i}]scale=${W}:${H}:force_original_aspect_ratio=decrease[fgs${i}]`,
+        `[bgb${i}][fgs${i}]overlay=(W-w)/2:(H-h)/2,${tail}`,
+      );
+    } else {
+      filters.push(`${base},scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},${tail}`);
+    }
   });
   let vLabel = 'v0';
   for (let i = 1; i < t.tracks.video.length; i++) {

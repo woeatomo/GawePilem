@@ -21,10 +21,14 @@ export async function POST(req: Request) {
   const s = await getSession();
   if (!s) return jsonError(401, 'unauthorized', 'Silakan masuk dulu.');
   if (await rateLimit(`render:${s.userId}`, 6, 60)) return jsonError(429, 'rate_limited', 'Terlalu sering render. Coba lagi sebentar.');
-  const p = z.object({ projectId: z.string().uuid(), episode: z.number().int().positive(), quality: z.enum(['480p', '720p', '1080p']), idempotencyKey: z.string().min(8), mode: z.enum(['auto', 'latest']).default('latest') }).safeParse(await req.json().catch(() => null));
+  const p = z.object({ projectId: z.string().uuid(), episode: z.number().int().positive(), quality: z.enum(['480p', '720p', '1080p']), idempotencyKey: z.string().min(8), mode: z.enum(['auto', 'latest']).default('latest'),
+    teaser: z.object({ start: z.number().min(0), end: z.number().positive(), aspect: z.enum(['9:16', '16:9', '1:1']).default('9:16'), reframe: z.enum(['crop', 'blur']).default('blur') }).optional(),
+  }).safeParse(await req.json().catch(() => null));
   if (!p.success) return jsonError(400, 'bad_request', 'Body tidak valid');
   if (!QUALITY_BY_PLAN[s.profile.plan]?.includes(p.data.quality)) return jsonError(403, 'plan', 'Resolusi ini butuh paket Creator ke atas.');
 
+  const t = p.data.teaser;
+  if (t && (t.end - t.start < 1 || t.end - t.start > 180)) return jsonError(400, 'bad_range', 'Durasi teaser 1–180 detik (batas YouTube Shorts 3 menit).');
   const b = await loadProject(s.db, p.data.projectId, p.data.episode);
   if (!b.shots.length) return jsonError(400, 'no_shots', 'Belum ada shot untuk dirakit.');
   const admin = supabaseAdmin();
@@ -53,11 +57,16 @@ export async function POST(req: Request) {
   });
   const { data: r, error: re } = await admin
     .from('renders')
-    .insert({ episode_id: b.episode.id, workspace_id: b.project.workspace_id, timeline_id: tl.id, aspect_ratio: b.project.aspect_ratio, resolution: p.data.quality, status: 'queued' })
+    .insert({
+      episode_id: b.episode.id, workspace_id: b.project.workspace_id, timeline_id: tl.id, resolution: p.data.quality, status: 'queued',
+      ...(t
+        ? { variant: 'teaser', aspect_ratio: t.aspect, range_start: t.start, range_end: t.end, reframe: t.aspect === b.project.aspect_ratio ? 'crop' : t.reframe }
+        : { variant: 'master', aspect_ratio: b.project.aspect_ratio }),
+    })
     .select('id')
     .single();
   if (re || !r) return jsonError(500, 'db', re?.message ?? 'Gagal membuat render');
-  await admin.from('episodes').update({ status: 'edit' }).eq('id', b.episode.id);
+  if (!t) await admin.from('episodes').update({ status: 'edit' }).eq('id', b.episode.id);
   try {
     await enqueueMedia({ kind: 'render', jobId: job.id, workspaceId: s.workspaceId, renderId: r.id });
   } catch {

@@ -16,11 +16,18 @@ const ANGLES = [
 
 const STYLE_EN: Record<string, string> = {
   'realistis sinematik': 'cinematic photorealistic, 35mm film still, natural skin texture',
-  anime: 'anime style, clean line art, cel shading',
+  anime: 'Japanese TV anime style, anime key visual, clean crisp line art, cel shading, vibrant colors, detailed painted background, expressive eyes, original character design',
   '3D animasi': '3D animated film style, soft global illumination',
   'cat air': 'watercolor illustration style',
   'noir hitam putih': 'black and white film noir, high contrast',
 };
+
+/** Negative prompt per gaya: anime menolak hasil fotorealistik, realistis menolak gaya kartun. */
+const NEGATIVE: Record<string, string> = {
+  anime: 'photorealistic, photo, 3d render, realistic skin texture, western cartoon, blurry, deformed hands, extra fingers, text, watermark, logo',
+  'realistis sinematik': 'cartoon, anime, illustration, deformed face, extra fingers, text, watermark, logo, celebrity likeness',
+};
+const negativeFor = (style: string) => NEGATIVE[style] ?? 'text, watermark, logo, extra fingers, deformed face, celebrity likeness';
 
 async function store(workspaceId: string, path: string, url: string): Promise<string> {
   const a = await fetchAsset(url);
@@ -44,10 +51,13 @@ export async function charref(job: Job, characterId: string): Promise<JobResult>
   const style = STYLE_EN[p.visual_style] ?? p.visual_style;
   const refs: { angle: string; url: string }[] = [];
   for (const [i, a] of ANGLES.entries()) {
-    const prompt = `Character reference sheet. ${a.prompt}. Original fictional character, Indonesian, age ${c.age ?? 'adult'}. ${c.look}. Plain dark studio background, soft key light. ${style}. Not a real person, not a celebrity.`;
+    const anime = p.visual_style === 'anime';
+    const prompt = anime
+      ? `Anime character model sheet, ${a.prompt}. Original anime character, age ${c.age ?? 'adult'}. ${c.look}. Plain flat background, consistent design. ${style}. Not based on any existing anime character.`
+      : `Character reference sheet. ${a.prompt}. Original fictional character, Indonesian, age ${c.age ?? 'adult'}. ${c.look}. Plain dark studio background, soft key light. ${style}. Not a real person, not a celebrity.`;
     // Sudut 2+ memakai sudut depan sebagai reference supaya wajah konsisten.
     const characters: CharacterReference[] = refs[0] ? [{ characterId: c.id, name: c.name, imageUrls: [publicUrl(refs[0].url)] }] : [];
-    const { images } = await (await getGateway()).generateImage(setting, { prompt, aspect: '1:1', seed, characters });
+    const { images } = await (await getGateway()).generateImage(setting, { prompt, negativePrompt: negativeFor(p.visual_style), aspect: '1:1', seed, characters });
     const url = await store(job.workspace_id, `characters/${c.id}/${job.id}-${i}`, images[0]!.url);
     refs.push({ angle: a.angle, url });
     await progress(job.id, ((i + 1) / ANGLES.length) * 100);
@@ -94,7 +104,7 @@ export async function keyframes(job: Job, shotIds: string[]): Promise<JobResult>
       const characters = await lockedRefs(s.character_ids);
       const { images } = await (await getGateway()).generateImage(setting, {
         prompt: `${image}. ${style}. Shot type ${s.shot_type}.`,
-        negativePrompt: 'text, watermark, logo, extra fingers, deformed face, celebrity likeness',
+        negativePrompt: negativeFor(p.visual_style),
         aspect: p.aspect_ratio,
         characters,
       });

@@ -3,3 +3,4 @@ export * from './assemble';
 export * from './edit';
 export * from './ass';
 export * from './compile';
+export * from './slice';

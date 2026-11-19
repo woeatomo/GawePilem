@@ -24,3 +24,20 @@ begin
   perform pg_temp.assert(public.job_finish_partial(j.id, '{}', 999) = 6, 'refund dibatasi biaya job');
 end $$;
 select 'partial ok' as result;
+-- Teaser wajib punya rentang 1–180 detik.
+do $$
+declare ws uuid; p uuid; e uuid;
+begin
+  select id into ws from public.workspaces limit 1;
+  insert into public.projects (workspace_id, title, aspect_ratio) values (ws, 'Anime', '16:9') returning id into p;
+  insert into public.episodes (project_id, workspace_id, number) values (p, ws, 1) returning id into e;
+  insert into public.renders (episode_id, workspace_id, aspect_ratio, resolution, variant, range_start, range_end, reframe)
+  values (e, ws, '9:16', '720p', 'teaser', 10, 70, 'blur');
+  begin
+    insert into public.renders (episode_id, workspace_id, aspect_ratio, resolution, variant, range_start, range_end)
+    values (e, ws, '9:16', '720p', 'teaser', 0, 400);
+    raise exception 'GAGAL: teaser > 180 detik diterima';
+  exception when check_violation then null;
+  end;
+end $$;
+select 'render variants ok' as result;

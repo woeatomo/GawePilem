@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   applyEdits, autoAssemble, clipStarts, compileTimeline, EditError, editProposalSchema, outputSize, parseProgress,
-  splitSubtitle, timecode, timelineDuration, timelineSchema, toAss, escapeFilterPath, type Timeline,
+  splitSubtitle, timecode, timelineDuration, timelineSchema, toAss, escapeFilterPath, sliceTimeline, SliceError, type Timeline,
 } from './index';
 
 const base: Timeline = {
@@ -72,6 +72,43 @@ describe('rakit otomatis', () => {
     expect(s[0]!.start).toBe(1);
     expect(s.at(-1)!.end).toBe(3);
     expect(s[0]!.words![1]!.w).toBe('dua');
+  });
+});
+
+describe('potongan teaser', () => {
+  const wide: Timeline = { ...base, aspect: '16:9' };
+  it('memangkas klip di batas, membuang transisi di awal, menggeser waktu ke 0', () => {
+    // klip: a [0,2), b [1.5,3.5) fade, c [3.5,5)
+    const t = sliceTimeline(wide, 1, 4);
+    expect(t.tracks.video).toEqual([
+      { shotId: 'a', in: 1, out: 2 },
+      { shotId: 'b', in: 0.5, out: 2.5, transition: 'fade' },
+      { shotId: 'c', in: 0, out: 0.5, transition: 'cut' },
+    ]);
+    expect(timelineDuration(t)).toBe(3);
+    expect(t.tracks.dialog).toEqual([]); // dialog mulai 0,3 di luar rentang
+    expect(t.tracks.sfx).toEqual([{ assetId: 'knock', start: 0.2 }]);
+    expect(t.tracks.music).toEqual([{ assetId: 'mus', start: 0, end: 3, gainDb: -18, duckUnderDialog: true }]);
+    expect(t.tracks.subtitle).toEqual([{ start: 0, end: 0.5, text: 'Jangan dijawab.' }]);
+    expect(timelineSchema.safeParse(t).success).toBe(true);
+  });
+  it('klip yang terpotong di awal kehilangan transisi masuknya', () => {
+    const t = sliceTimeline(wide, 2, 5);
+    expect(t.tracks.video[0]).toEqual({ shotId: 'b', in: 1, out: 2.5 });
+  });
+  it('menolak rentang kosong / di luar durasi', () => {
+    expect(() => sliceTimeline(wide, 4.8, 5.2)).toThrow(SliceError);
+    expect(() => sliceTimeline(wide, 9, 20)).toThrow(SliceError);
+  });
+  it('reframe blur memakai latar blur + overlay; crop tidak', () => {
+    const assets = Object.fromEntries(['a', 'b', 'c'].map((k) => [k, { path: `${k}.mp4`, kind: 'video' as const }]));
+    for (const k of ['vo1', 'mus', 'knock']) assets[k] = { path: `${k}.wav`, kind: 'audio' } as never;
+    const blur = compileTimeline(wide, { assets, outputPath: 'o.mp4', quality: '720p', outputAspect: '9:16', reframe: 'blur' });
+    expect(blur.filterComplex).toContain('boxblur');
+    expect(blur.filterComplex).toContain('overlay=(W-w)/2:(H-h)/2');
+    const crop = compileTimeline(wide, { assets, outputPath: 'o.mp4', quality: '720p', outputAspect: '9:16', reframe: 'crop' });
+    expect(crop.filterComplex).not.toContain('boxblur');
+    expect(crop.filterComplex).toContain('crop=720:1280');
   });
 });
 
@@ -159,6 +196,26 @@ describe.skipIf(!hasFfmpeg)('render FFmpeg sungguhan', () => {
     const v = probe.streams.find((s: { codec_type: string }) => s.codec_type === 'video');
     expect([v.width, v.height]).toEqual([480, 854]);
     expect(probe.streams.some((s: { codec_type: string }) => s.codec_type === 'audio')).toBe(true);
+    expect(Math.abs(Number(probe.format.duration) - 5)).toBeLessThan(0.15);
+  }, 60_000);
+
+  it('master 16:9 → teaser 9:16 (blur) ter-render dengan ukuran & durasi benar', () => {
+    ff('-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=24:duration=3', join(dir, 'w.mp4'));
+    const tl: Timeline = {
+      fps: 24, aspect: '16:9',
+      tracks: { video: [{ shotId: 'w1', in: 0, out: 3 }, { shotId: 'w2', in: 0, out: 3, transition: 'dip' }, { shotId: 'w3', in: 0, out: 3, transition: 'cut' }], dialog: [], music: [], sfx: [], subtitle: [{ start: 3.5, end: 5, text: 'Teaser' }] },
+    };
+    const teaser = sliceTimeline(tl, 2, 7);
+    const out = join(dir, 'teaser.mp4');
+    const subs = join(dir, 'teaser.ass');
+    writeFileSync(subs, toAss(teaser.tracks.subtitle, outputSize('9:16', '480p'), { karaoke: true }));
+    const assets = Object.fromEntries(['w1', 'w2', 'w3'].map((k) => [k, { path: join(dir, 'w.mp4'), kind: 'video' as const }]));
+    const c = compileTimeline(teaser, { assets, outputPath: out, quality: '480p', preset: 'ultrafast', outputAspect: '9:16', reframe: 'blur', subtitlePath: subs });
+    const r = spawnSync('ffmpeg', c.args, { encoding: 'utf8' });
+    expect(r.status, r.stderr.slice(-500)).toBe(0);
+    const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', out], { encoding: 'utf8' }));
+    const v = probe.streams.find((s: { codec_type: string }) => s.codec_type === 'video');
+    expect([v.width, v.height]).toEqual([480, 854]);
     expect(Math.abs(Number(probe.format.duration) - 5)).toBeLessThan(0.15);
   }, 60_000);
 

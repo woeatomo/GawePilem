@@ -25,7 +25,7 @@ function describeOp(op: EditProposal['ops'][number], no: Record<string, number>)
   }
 }
 
-interface R { id: string; status: string; progress: number; url: string | null; resolution: string; error: string | null; at: string; duration: number | null }
+interface R { id: string; status: string; progress: number; url: string | null; resolution: string; error: string | null; at: string; duration: number | null; variant: string; aspect: string; range: [number, number] | null }
 
 export function EditorPanel(p: {
   projectId: string; episode: number; aspect: string; plan: string; timeline: Timeline | null; duration: number; missing: string[];
@@ -40,18 +40,23 @@ export function EditorPanel(p: {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const router = useRouter();
-  const latest = p.renders.find((r) => r.status === 'ready');
+  const latest = p.renders.find((r) => r.status === 'ready' && r.variant === 'master');
+  const latestTeaser = p.renders.find((r) => r.status === 'ready' && r.variant === 'teaser');
+  const [tStart, setTStart] = useState(0);
+  const [tEnd, setTEnd] = useState(() => Math.min(60, Math.floor(p.duration) || 60));
+  const [reframe, setReframe] = useState<'blur' | 'crop'>('blur');
+  const vertical = p.aspect === '9:16';
   const active = p.renders.find((r) => r.status === 'queued' || r.status === 'running');
   const t = p.timeline;
   const pct = (x: number) => `${(x / Math.max(0.001, p.duration)) * 100}%`;
 
-  async function render() {
+  async function render(teaser?: { start: number; end: number; aspect: '9:16'; reframe: 'blur' | 'crop' }) {
     setBusy(true);
     try {
       const res = await fetch('/api/render', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ projectId: p.projectId, episode: p.episode, quality, mode: 'latest', idempotencyKey: crypto.randomUUID().replace(/-/g, '') }),
+        body: JSON.stringify({ projectId: p.projectId, episode: p.episode, quality, mode: 'latest', idempotencyKey: crypto.randomUUID().replace(/-/g, ''), ...(teaser ? { teaser } : {}) }),
       });
       const j = (await res.json()) as { error?: { message: string }; missing?: string[] };
       if (!res.ok) toast(j.error?.message ?? 'Gagal memulai render', 'err');
@@ -76,7 +81,7 @@ export function EditorPanel(p: {
             <option value="720p">720p</option>
             <option value="1080p" disabled={p.plan === 'free'}>1080p{p.plan === 'free' ? ' (Creator+)' : ''}</option>
           </select>
-          <button className="btn primary" onClick={render} disabled={busy || !t || Boolean(active)}>
+          <button className="btn primary" onClick={() => render()} disabled={busy || !t || Boolean(active)}>
             {active ? `Merender ${active.progress}%` : busy ? 'Memulai…' : p.saved ? `Render timeline v${p.saved.version}` : 'Rakit & render MP4'}
             <span className="cost">gratis</span>
           </button>
@@ -193,6 +198,46 @@ export function EditorPanel(p: {
         </section>
         </>
       )}
+      {t && !vertical && (
+        <section className="card">
+          <div className="card-h">
+            <h2>Versi Shorts (9:16)</h2>
+            <span className="pill">teaser dari master {p.aspect} · maks 3 menit</span>
+          </div>
+          <p className="muted small" style={{ marginBottom: 10 }}>
+            Pilih potongan episode untuk YouTube Shorts / TikTok. <b>Latar blur</b> menampilkan gambar utuh (tidak ada tokoh terpotong); <b>Crop tengah</b> memenuhi layar tapi sisi kiri-kanan terpotong.
+          </p>
+          <div className="row" style={{ alignItems: 'flex-end' }}>
+            <div>
+              <label className="lbl" htmlFor="t-start">Mulai (detik)</label>
+              <input id="t-start" type="number" min={0} step={0.5} value={tStart} onChange={(e) => setTStart(Number(e.target.value))} style={{ width: 120 }} />
+            </div>
+            <div>
+              <label className="lbl" htmlFor="t-end">Selesai (detik)</label>
+              <input id="t-end" type="number" min={1} step={0.5} value={tEnd} onChange={(e) => setTEnd(Number(e.target.value))} style={{ width: 120 }} />
+            </div>
+            <div>
+              <label className="lbl">Reframe</label>
+              <div className="seg">
+                <button className={reframe === 'blur' ? 'on' : ''} onClick={() => setReframe('blur')}>Latar blur</button>
+                <button className={reframe === 'crop' ? 'on' : ''} onClick={() => setReframe('crop')}>Crop tengah</button>
+              </div>
+            </div>
+            <span className="mono small muted">{timecode(Math.max(0, tEnd - tStart))}</span>
+            <button
+              className="btn primary"
+              disabled={busy || Boolean(active) || tEnd - tStart < 1 || tEnd - tStart > 180 || tEnd > p.duration + 0.01}
+              onClick={() => render({ start: tStart, end: tEnd, aspect: '9:16', reframe })}
+            >
+              Render teaser 9:16 <span className="cost">gratis</span>
+            </button>
+          </div>
+          {(tEnd - tStart > 180 || tEnd > p.duration + 0.01) && <p className="small" style={{ color: 'var(--warn)', marginTop: 8 }}>Rentang harus 1–180 detik dan di dalam durasi episode ({fmt1(p.duration)} dtk).</p>}
+          {latestTeaser?.url && (
+            <video src={latestTeaser.url} controls playsInline style={{ marginTop: 12, height: 420, background: '#000', borderRadius: 10, aspectRatio: '9/16' }} />
+          )}
+        </section>
+      )}
       <div className="grid2">
         <section className="card">
           <h2>Pratinjau</h2>
@@ -212,6 +257,10 @@ export function EditorPanel(p: {
                 {p.renders.map((r) => (
                   <tr key={r.id}>
                     <td className="small">{new Date(r.at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                    <td className="small">
+                      <span className="pill">{r.variant === 'teaser' ? `teaser ${r.aspect}` : `master ${r.aspect}`}</span>
+                      {r.range && <div className="mono faint">{fmt1(r.range[0])}–{fmt1(r.range[1])} dtk</div>}
+                    </td>
                     <td className="mono small">{r.resolution}</td>
                     <td>
                       {r.status === 'ready' ? <span className="pill good">Siap</span> : r.status === 'failed' ? <span className="pill crit" title={r.error ?? ''}>Gagal</span> : <div className="bar"><i style={{ width: `${r.progress}%` }} /></div>}

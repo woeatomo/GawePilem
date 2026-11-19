@@ -50,7 +50,9 @@ Dari riset dan ide di konteks, buat logline, premis, dan {{count}} karakter utam
 Syarat karakter:
 - Nama Indonesia yang wajar dan beragam, bukan nama orang terkenal.
 - Tiap karakter punya keinginan, rahasia/kelemahan, dan cara bicara yang berbeda.
-- "look" = deskripsi visual konsisten (rambut, pakaian khas, ciri wajah, properti) untuk dikunci sebagai reference image.
+- "look" = deskripsi visual konsisten untuk dikunci sebagai reference image (lihat panduan gaya di bawah).
+
+{{styleGuide}}
 - "sampleLine" = satu kalimat khas karakter.
 - "voiceHint" salah satu: perempuan_lembut, perempuan_matang, laki_hangat, laki_berat, anak, narator.
 
@@ -107,13 +109,15 @@ Balas HANYA dengan scene hasil revisi.`,
     stage: 'shotlist', genre: '*', format: '*', version: 1, weight: 100,
     body: `Kamu sutradara dan storyboard artist. Pecah naskah episode menjadi shot list untuk rasio {{aspect}}, gaya visual "{{style}}".
 
+{{styleGuide}}
+
 Aturan:
 - Durasi tiap shot 2–8 detik (maks 15). Total mendekati {{targetSec}} detik.
 - shotType salah satu: WS, MS, CU, ECU, OTS, POV, INSERT, AERIAL. Microdrama: perbanyak CU/MS.
 - camera: gerakan kamera singkat (statis, dolly in, handheld, pan kanan, tilt up, rack focus, slow push).
 - characters: nama karakter yang tampak di frame, persis seperti di sheet.
 - dialog: kalimat yang diucapkan di shot ini (atau null).
-- imagePrompt: deskripsi frame kunci dalam bahasa Inggris untuk model gambar (komposisi, cahaya, lensa, mood, gaya "{{style}}"). Rujuk karakter dengan namanya; jangan deskripsikan ulang wajah (wajah diambil dari reference terkunci).
+- imagePrompt: deskripsi frame kunci dalam bahasa Inggris untuk model gambar (komposisi, cahaya, lensa, mood, gaya "{{style}}"). Rujuk karakter dengan namanya; jangan deskripsikan ulang wajah (wajah diambil dari reference terkunci). Untuk anime, awali dengan "anime key frame," dan sebut kostum khas tokoh agar konsisten.
 - motionPrompt: gerakan untuk image-to-video dalam bahasa Inggris, singkat.
 
 Balas HANYA JSON:

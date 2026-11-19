@@ -15,10 +15,13 @@ const STATUS: Record<string, [string, string]> = {
 const FLASH: Record<string, string> = { connected: 'Channel YouTube terhubung.', invalid_state: 'Sesi OAuth kedaluwarsa. Coba lagi.', denied: 'Akses YouTube dibatalkan.', error: 'Gagal menghubungkan YouTube.' };
 
 export function PublishPanel(p: {
-  projectId: string; episode: number; title: string; synopsis: string; render: { id: string; url: string | null; aspect: string; duration: number } | null;
+  projectId: string; episode: number; title: string; synopsis: string;
+  renders: { id: string; url: string | null; aspect: string; duration: number; variant: string; at: string }[];
   accounts: Acc[]; pubs: Pub[]; youtubeConfigured: boolean; quota: { used: number; limit: number }; plan: string; flash: string | null;
 }) {
   const yt = p.accounts.filter((a) => a.platform === 'youtube');
+  const [renderId, setRenderId] = useState(p.renders.find((r) => r.variant === 'master')?.id ?? p.renders[0]?.id ?? '');
+  const render = p.renders.find((r) => r.id === renderId) ?? null;
   const [acc, setAcc] = useState(yt[0]?.id ?? '');
   const [title, setTitle] = useState(p.title && !/^Episode \d+$/.test(p.title) ? p.title : '');
   const [desc, setDesc] = useState(`${p.synopsis}\n\nKonten ini dibuat dengan bantuan AI.`.trim());
@@ -30,17 +33,17 @@ export function PublishPanel(p: {
   useEffect(() => {
     if (p.flash && FLASH[p.flash]) toast(FLASH[p.flash]!, p.flash === 'connected' ? 'ok' : 'err');
   }, [p.flash, toast]);
-  const shorts = p.render?.aspect === '9:16' && (p.render?.duration ?? 0) <= 180;
+  const shorts = render?.aspect === '9:16' && (render?.duration ?? 0) <= 180;
   const account = yt.find((a) => a.id === acc);
   const back = `/studio/${p.projectId}/publish${p.episode > 1 ? `?ep=${p.episode}` : ''}`;
 
   async function publish() {
-    if (!p.render || !acc) return;
+    if (!render || !acc) return;
     setBusy(true);
     const res = await fetch('/api/publish', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ renderId: p.render.id, socialAccountId: acc, title, description: desc, tags: tags.split(/[,\s]+/).filter(Boolean), privacy, idempotencyKey: crypto.randomUUID().replace(/-/g, '') }),
+      body: JSON.stringify({ renderId: render.id, socialAccountId: acc, title, description: desc, tags: tags.split(/[,\s]+/).filter(Boolean), privacy, idempotencyKey: crypto.randomUUID().replace(/-/g, '') }),
     });
     setBusy(false);
     const j = (await res.json().catch(() => ({}))) as { error?: { message: string } };
@@ -73,7 +76,7 @@ export function PublishPanel(p: {
           />
         </div>
       </header>
-      {!p.render && <p className="note warn">Belum ada render siap. Selesaikan render di tahap Editor dulu.</p>}
+      {!render && <p className="note warn">Belum ada render siap. Selesaikan render di tahap Editor dulu.</p>}
       <div className="plat">
         <section className="pcard">
           <div className="ph">
@@ -95,14 +98,24 @@ export function PublishPanel(p: {
         </section>
         <section className="pcard">
           <div className="ph"><span className="av" style={{ background: 'var(--accent)' }} /><div><b>Unduh MP4</b><small>Unggah manual ke platform mana pun</small></div></div>
-          {p.render?.url ? <a className="btn sm" href={p.render.url} download>Unduh render terbaru</a> : <span className="small faint">Belum ada render</span>}
+          {render?.url ? <a className="btn sm" href={render.url} download>Unduh render terbaru</a> : <span className="small faint">Belum ada render</span>}
         </section>
       </div>
-      {p.render && yt.length > 0 && (
+      {render && yt.length > 0 && (
         <section className="card">
           <h2>Metadata YouTube</h2>
           <div className="grid2">
             <div className="stack-sm">
+              <div>
+                <label className="lbl" htmlFor="rd">Video</label>
+                <select id="rd" value={renderId} onChange={(e) => setRenderId(e.target.value)}>
+                  {p.renders.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.variant === 'teaser' ? 'Teaser' : 'Master'} {r.aspect} · {Math.round(r.duration)} dtk{r.aspect === '9:16' && r.duration <= 180 ? ' → Shorts' : ' → YouTube'}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="lbl" htmlFor="ch">Channel</label>
                 <select id="ch" value={acc} onChange={(e) => setAcc(e.target.value)}>

@@ -28,7 +28,7 @@ export default async function Page(props: { params: Promise<{ projectId: string 
         saved={saved?.success ? { version: b.timeline!.version, source: b.timeline!.source, note: b.timeline!.note } : null}
         versions={(versions ?? []).map((v) => ({ version: v.version, source: v.source, note: v.note, at: v.created_at }))}
         shotNo={Object.fromEntries(b.shots.map((s, i) => [s.id, i + 1]))}
-        renders={b.renders.map((r) => ({ id: r.id, status: r.status, progress: r.progress, url: r.url, resolution: r.resolution, error: r.error, at: r.created_at, duration: r.duration_sec ? Number(r.duration_sec) : null }))}
+        renders={b.renders.map((r) => ({ id: r.id, status: r.status, progress: r.progress, url: r.url, resolution: r.resolution, error: r.error, at: r.created_at, duration: r.duration_sec ? Number(r.duration_sec) : null, variant: r.variant, aspect: r.aspect_ratio, range: r.range_start !== null && r.range_end !== null ? [Number(r.range_start), Number(r.range_end)] as [number, number] : null }))}
       />
     </Stage>
   );

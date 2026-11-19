@@ -18,7 +18,7 @@ export default async function Page(props: { params: Promise<{ projectId: string 
     db.from('publications').select('id, platform, variant, status, platform_video_id, privacy, error, created_at, metadata').eq('episode_id', b.episode.id).order('created_at', { ascending: false }),
     db.from('publications').select('id', { count: 'exact', head: true }).eq('platform', 'youtube').gte('created_at', today.toISOString()),
   ]);
-  const ready = b.renders.find((r) => r.status === 'ready');
+  const ready = b.renders.filter((r) => r.status === 'ready' && r.url);
   const e = env();
   return (
     <Stage data={data} stage="publish">
@@ -27,7 +27,7 @@ export default async function Page(props: { params: Promise<{ projectId: string 
         episode={b.episode.number}
         title={b.episode.title}
         synopsis={b.episode.synopsis}
-        render={ready ? { id: ready.id, url: ready.url, aspect: ready.aspect_ratio, duration: Number(ready.duration_sec ?? 0) } : null}
+        renders={ready.map((r) => ({ id: r.id, url: r.url, aspect: r.aspect_ratio, duration: Number(r.duration_sec ?? 0), variant: r.variant, at: r.created_at }))}
         accounts={(accounts ?? []).map((a) => ({ id: a.id, platform: a.platform, name: a.channel_name, avatar: a.avatar_url, status: a.status, audited: a.audited, error: a.last_error }))}
         pubs={(pubs ?? []).map((p) => ({ id: p.id, variant: p.variant, status: p.status, videoId: p.platform_video_id, privacy: p.privacy, error: p.error, at: p.created_at, title: String((p.metadata as { title?: string })?.title ?? '') }))}
         youtubeConfigured={Boolean(await youtubeClient())}

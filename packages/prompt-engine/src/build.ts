@@ -1,6 +1,6 @@
 import type { ChatMessage } from './types';
 import { buildContext, type ProjectContext } from './context';
-import { CLICHES_TO_AVOID, FORMAT_GUIDE, GENRE_GUIDE, GUARDRAILS, hashSeed, pickDevices } from './guidance';
+import { CLICHES_TO_AVOID, FORMAT_GUIDE, GENRE_GUIDE, GUARDRAILS, STYLE_GUIDE, hashSeed, pickDevices } from './guidance';
 import { OUTPUT_SCHEMAS, type FilmFormat, type Genre, type Stage, type StructuredStage } from './schemas';
 import { BUILTIN_TEMPLATES, fill, selectTemplate, type PromptTemplate } from './templates';
 
@@ -62,6 +62,7 @@ export function buildPrompt(input: BuildInput): BuiltPrompt {
     episodeCount: p.episodeCount ?? 1,
     genreGuide: GENRE_GUIDE[p.genre as Genre] ?? GENRE_GUIDE.default,
     formatGuide: FORMAT_GUIDE[p.format as FilmFormat] ?? FORMAT_GUIDE.default,
+    styleGuide: STYLE_GUIDE[p.style] ?? STYLE_GUIDE.default,
     devices: pickDevices(seed).join('; '),
     cliches: CLICHES_TO_AVOID.join('; '),
     previousEpisodes: previous,

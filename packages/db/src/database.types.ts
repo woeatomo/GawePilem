@@ -1019,10 +1019,14 @@ export type Database = {
           finished_at: string | null;
           id: string;
           progress: number;
+          range_end: number | null;
+          range_start: number | null;
+          reframe: string | null;
           resolution: string;
           status: Database['public']['Enums']['asset_status'];
           timeline_id: string | null;
           url: string | null;
+          variant: string;
           workspace_id: string;
         };
         ComputedFields: never;
@@ -1035,10 +1039,14 @@ export type Database = {
           finished_at?: string | null;
           id?: string;
           progress?: number;
+          range_end?: number | null;
+          range_start?: number | null;
+          reframe?: string | null;
           resolution: string;
           status?: Database['public']['Enums']['asset_status'];
           timeline_id?: string | null;
           url?: string | null;
+          variant?: string;
           workspace_id: string;
         };
         Update: {
@@ -1050,10 +1058,14 @@ export type Database = {
           finished_at?: string | null;
           id?: string;
           progress?: number;
+          range_end?: number | null;
+          range_start?: number | null;
+          reframe?: string | null;
           resolution?: string;
           status?: Database['public']['Enums']['asset_status'];
           timeline_id?: string | null;
           url?: string | null;
+          variant?: string;
           workspace_id?: string;
         };
         Relationships: [
