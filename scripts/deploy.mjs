@@ -15,6 +15,10 @@
  *   CLOUDFLARE_API_TOKEN    token API Cloudflare (izin: Workers Scripts, Workers Routes, Queues, R2, Zone read, DNS edit)
  *   CLOUDFLARE_ACCOUNT_ID   id akun Cloudflare
  *   DOMAIN                  domain di Cloudflare, mis. pilem.id
+ *     — atau, tanpa domain sendiri —
+ *   WORKERS_SUBDOMAIN       subdomain workers.dev akun, mis. "atomos" → web <WEB_WORKER>.atomos.workers.dev,
+ *                           job atomo-jobs.atomos.workers.dev, media disajikan Worker job (/media)
+ *   WEB_WORKER              nama Worker web (default pilem-studio)
  * Opsional:
  *   WEB_HOST (default studio.<DOMAIN>), JOBS_HOST (jobs.<DOMAIN>), MEDIA_HOST (media.<DOMAIN>)
  *   SUPERADMIN_EMAIL        angkat superadmin (akun harus sudah daftar di web)
@@ -50,11 +54,14 @@ const cfg = {
   ref: need('SUPABASE_PROJECT_REF'),
   cfToken: need('CLOUDFLARE_API_TOKEN'),
   account: need('CLOUDFLARE_ACCOUNT_ID'),
-  domain: need('DOMAIN'),
+  domain: env('DOMAIN') || (env('WORKERS_SUBDOMAIN') ? null : need('DOMAIN')),
 };
-cfg.web = env('WEB_HOST', `studio.${cfg.domain}`);
-cfg.jobs = env('JOBS_HOST', `jobs.${cfg.domain}`);
-cfg.media = env('MEDIA_HOST', `media.${cfg.domain}`);
+cfg.webWorker = env('WEB_WORKER', 'pilem-studio');
+cfg.sub = cfg.domain ? null : need('WORKERS_SUBDOMAIN').replace(/\.workers\.dev$/, '');
+cfg.web = env('WEB_HOST', cfg.domain ? `studio.${cfg.domain}` : `${cfg.webWorker}.${cfg.sub}.workers.dev`);
+cfg.jobs = env('JOBS_HOST', cfg.domain ? `jobs.${cfg.domain}` : `atomo-jobs.${cfg.sub}.workers.dev`);
+// Tanpa domain sendiri: R2 tidak punya alamat publik produksi, jadi media disajikan Worker job (mendukung Range).
+cfg.media = env('MEDIA_HOST', cfg.domain ? `media.${cfg.domain}` : `${cfg.jobs}/media`);
 cfg.supabaseUrl = `https://${cfg.ref}.supabase.co`;
 cfg.free = env('FREE_TIER') === '1';
 
@@ -164,13 +171,14 @@ async function zone() {
 
 async function cloudflare() {
   log('Cloudflare: R2, Queue, domain media');
-  const zid = await zone();
   const buckets = DRY ? [] : ((await cf('GET', `/accounts/${cfg.account}/r2/buckets`))?.result?.buckets ?? []).map((b) => b.name);
   if (!buckets.includes('atomo-media')) run('npx', ['wrangler', 'r2', 'bucket', 'create', 'atomo-media'], { cwd: join(ROOT, 'apps/jobs') });
   ok('R2 atomo-media');
   const queues = DRY ? [] : ((await cf('GET', `/accounts/${cfg.account}/queues`))?.result ?? []).map((q) => q.queue_name);
   for (const q of ['atomo-jobs', 'atomo-jobs-dlq']) if (!queues.includes(q)) run('npx', ['wrangler', 'queues', 'create', q], { cwd: join(ROOT, 'apps/jobs') });
   ok('Queue atomo-jobs + DLQ');
+  if (!cfg.domain) return ok(`media disajikan Worker job: https://${cfg.media}`);
+  const zid = await zone();
   const domains = DRY ? [] : ((await cf('GET', `/accounts/${cfg.account}/r2/buckets/atomo-media/domains/custom`))?.result?.domains ?? []).map((d) => d.domain);
   if (!domains.includes(cfg.media)) run('npx', ['wrangler', 'r2', 'bucket', 'domain', 'add', 'atomo-media', '--domain', cfg.media, '--zone-id', zid, '--min-tls', '1.2', '--force'], { cwd: join(ROOT, 'apps/jobs') });
   ok(`media publik https://${cfg.media}`);
@@ -180,14 +188,14 @@ async function cloudflare() {
 /** Baca wrangler.jsonc (komentar baris penuh saja) lalu isi vars + custom domain produksi. */
 export function productionConfig(file, vars, host) {
   const json = JSON.parse(readFileSync(file, 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n').replace(/,(\s*[}\]])/g, '$1'));
-  const out = { ...json, vars: { ...json.vars, ...vars }, routes: [{ pattern: host, custom_domain: true }] };
+  const out = { ...json, vars: { ...json.vars, ...vars }, ...(cfg.domain ? { routes: [{ pattern: host, custom_domain: true }] } : { workers_dev: true }) };
   for (const [k, v] of Object.entries(out.vars)) if (String(v).includes('GANTI')) fail(`${file}: var ${k} masih placeholder`);
   return out;
 }
 
 function writeConfig(dir, conf) {
   const path = join(ROOT, dir, 'wrangler.production.json');
-  if (DRY) console.log(`    tulis ${dir}/wrangler.production.json:\n${JSON.stringify({ name: conf.name, vars: conf.vars, routes: conf.routes, services: conf.services, limits: conf.limits }, null, 2).replace(/^/gm, '      ')}`);
+  if (DRY) console.log(`    tulis ${dir}/wrangler.production.json:\n${JSON.stringify({ name: conf.name, vars: conf.vars, routes: conf.routes, workers_dev: conf.workers_dev, services: conf.services, limits: conf.limits }, null, 2).replace(/^/gm, '      ')}`);
   else writeFileSync(path, JSON.stringify(conf, null, 2));
   return path;
 }
@@ -222,13 +230,16 @@ async function jobs() {
 }
 
 async function web() {
-  log('Web (pilem-studio)');
+  log(`Web (${cfg.webWorker})`);
   const { anon, service } = await supabaseKeys();
   const s = platformSecrets();
   const pub = { NEXT_PUBLIC_SUPABASE_URL: cfg.supabaseUrl, NEXT_PUBLIC_SUPABASE_ANON_KEY: anon };
-  const conf = writeConfig('apps/web', productionConfig(join(ROOT, 'apps/web/wrangler.jsonc'), {
+  const webConf = productionConfig(join(ROOT, 'apps/web/wrangler.jsonc'), {
     ...pub, APP_URL: `https://${cfg.web}`, WORKER_URL: `https://${cfg.jobs}`, AI_MOCK: '0', PAYMENTS_SANDBOX: '0',
-  }, cfg.web));
+  }, cfg.web);
+  webConf.name = cfg.webWorker;
+  webConf.services = (webConf.services ?? []).map((s) => (s.binding === 'WORKER_SELF_REFERENCE' ? { ...s, service: cfg.webWorker } : s));
+  const conf = writeConfig('apps/web', webConf);
   // NEXT_PUBLIC_* ditanam saat build, jadi wajib ada di env build.
   run('npx', ['opennextjs-cloudflare', 'build'], { cwd: join(ROOT, 'apps/web'), env: { ...pub, NODE_ENV: 'production' } });
   run('npx', ['opennextjs-cloudflare', 'deploy', '-c', conf], { cwd: join(ROOT, 'apps/web'), env: pub });
