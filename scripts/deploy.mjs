@@ -139,13 +139,21 @@ async function supabase() {
     ok('tarif awal dimasukkan');
   } else ok(`tarif sudah ada (${rates[0].n} baris), tidak diubah`);
 
-  await sb('PATCH', `/v1/projects/${cfg.ref}/config/auth`, {
-    site_url: `https://${cfg.web}`,
-    uri_allow_list: `https://${cfg.web}/auth/callback,https://${cfg.web}/**`,
-    mfa_totp_enroll_enabled: true,
-    mfa_totp_verify_enabled: true,
-  });
-  ok(`auth: site_url https://${cfg.web}, 2FA TOTP aktif`);
+  try {
+    await sb('PATCH', `/v1/projects/${cfg.ref}/config/auth`, {
+      site_url: `https://${cfg.web}`,
+      uri_allow_list: `https://${cfg.web}/auth/callback,https://${cfg.web}/**`,
+      mfa_totp_enroll_enabled: true,
+      mfa_totp_verify_enabled: true,
+    });
+    ok(`auth: site_url https://${cfg.web}, 2FA TOTP aktif`);
+  } catch (e) {
+    // Token tanpa izin Project Settings (write): atur manual di dashboard, deploy tetap jalan.
+    if (!/403/.test(String(e))) throw e;
+    console.log(`  ! auth tidak diatur (token tanpa izin Project Settings: write). Atur manual di Supabase → Authentication → URL Configuration:
+      Site URL      : https://${cfg.web}
+      Redirect URLs : https://${cfg.web}/auth/callback`);
+  }
 }
 
 async function supabaseKeys() {
