@@ -15,9 +15,9 @@ Tidak ada platform tonton sendiri. Distribusi hanya lewat platform eksternal.
 
 | Bagian | Pilihan |
 | --- | --- |
-| Web app | Next.js (App Router) + TypeScript strict + Tailwind |
+| Web app | Next.js (App Router) + TypeScript strict + Tailwind, deploy ke Cloudflare Workers (OpenNext) |
 | Auth, DB, storage file kecil | Supabase (Postgres, Auth, RLS, Storage) |
-| Antrean job | Redis + BullMQ |
+| Antrean job | Redis + BullMQ (hanya di worker; web mengirim job lewat HTTP `POST /enqueue` bertoken) |
 | Worker render & perakitan video | Node.js + FFmpeg (container terpisah) |
 | Object storage aset besar | S3-compatible + CDN |
 | Validasi | zod di setiap batas (API route, output LLM, webhook) |
@@ -51,6 +51,9 @@ pnpm test:db                   # migrasi + RLS + RPC kredit di Postgres sementar
 pnpm test:e2e                  # alur utama via Playwright; butuh supabase start, redis, web (build+start), worker, AI_MOCK=1
 pnpm lint && pnpm typecheck
 pnpm build                     # build web
+pnpm test:e2e:anime            # alur serial anime 16:9 + teaser 9:16
+pnpm --filter @atomo/web cf:preview   # web di runtime Cloudflare (workerd) lokal
+pnpm --filter @atomo/web cf:deploy    # deploy web ke Cloudflare (lihat docs/DEPLOY.md)
 supabase start                 # Supabase lokal (Docker)
 supabase db reset              # terapkan ulang semua migrasi + seed tarif
 bash scripts/gen-db-types.sh   # regenerate packages/db/src/database.types.ts
@@ -204,6 +207,8 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [x] Moderasi sebelum publish (prefilter teks; antrean review manual belum ada UI)
 - [x] Hapus akun & ekspor data (UU PDP)
 - [x] Halaman secret platform untuk superadmin dengan 2FA TOTP (`/admin/secrets`)
+- [x] Deploy: web di Cloudflare Workers (OpenNext), media di R2, worker Docker di VPS (`docs/DEPLOY.md`)
+- [x] Mode anime (panduan gaya & model sheet karakter) + master 16:9 dengan teaser 9:16 untuk Shorts (reframe blur/crop)
 
 ### Fase 3: Launch
 - [ ] Paket langganan, publish terjadwal, cross-post, analitik ringan

@@ -18,6 +18,10 @@ Spesifikasi lengkap ada di [CLAUDE.md](./CLAUDE.md).
 | `packages/db` | Tipe hasil generate Supabase, helper RPC kredit/job, kontrak antrean |
 | `supabase/` | Migrasi SQL, RLS, RPC `charge_and_enqueue`, seed tarif, tes database |
 
+## Deploy
+
+Web di Cloudflare Workers, media di Cloudflare R2, worker (FFmpeg) di VPS dengan Docker: lihat **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
 ## Menjalankan lokal
 
 Butuh Node 22, pnpm 10, Docker (untuk Supabase lokal), Redis, dan FFmpeg.
