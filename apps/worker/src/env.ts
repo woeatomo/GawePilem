@@ -20,6 +20,8 @@ export const env = z
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     S3_PUBLIC_URL: z.string().optional(),
     APP_URL: z.string().url().default('http://localhost:3000'),
+    WORKER_PORT: z.coerce.number().int().default(8787),
+    WORKER_TOKEN: z.string().min(24, 'WORKER_TOKEN minimal 24 karakter (openssl rand -hex 24)'),
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(32).default(4),
     RENDER_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(1),
     FFMPEG_PATH: z.string().default('ffmpeg'),

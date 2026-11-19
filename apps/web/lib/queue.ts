@@ -1,25 +1,19 @@
 import 'server-only';
-import { Queue } from 'bullmq';
-import { queueFor, type MediaJobData } from '@atomo/db';
-import { redis } from './redis';
+import type { MediaJobData } from '@atomo/db';
+import { env } from './env';
 
-const queues = new Map<string, Queue<MediaJobData>>();
-function queue(name: string): Queue<MediaJobData> {
-  let q = queues.get(name);
-  if (!q) {
-    q = new Queue<MediaJobData>(name, { connection: redis() });
-    queues.set(name, q);
-  }
-  return q;
-}
-
-/** Enqueue idempotent: jobId BullMQ = id job DB, jadi klik ganda tidak menggandakan kerja. */
+/**
+ * Kirim job ke worker lewat HTTP (worker yang memegang BullMQ + Redis). Dengan begini web
+ * bisa jalan di Cloudflare Workers tanpa koneksi TCP ke Redis. Idempotent: worker memakai
+ * jobId sebagai id BullMQ, jadi kiriman ganda tidak menggandakan kerja.
+ */
 export async function enqueueMedia(data: MediaJobData): Promise<void> {
-  await queue(queueFor(data.kind)).add(data.kind, data, {
-    jobId: data.jobId,
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 5_000 },
-    removeOnComplete: { age: 86_400, count: 1000 },
-    removeOnFail: { age: 7 * 86_400 },
+  const e = env();
+  const res = await fetch(`${e.WORKER_URL.replace(/\/$/, '')}/enqueue`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${e.WORKER_TOKEN}` },
+    body: JSON.stringify(data),
+    signal: AbortSignal.timeout(10_000),
   });
+  if (!res.ok) throw new Error(`Worker menolak job (${res.status}): ${(await res.text().catch(() => '')).slice(0, 200)}`);
 }

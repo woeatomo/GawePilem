@@ -951,6 +951,28 @@ export type Database = {
           },
         ];
       };
+      rate_limits: {
+        Row: {
+          bucket: number;
+          expires_at: string;
+          hits: number;
+          key: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          bucket: number;
+          expires_at: string;
+          hits?: number;
+          key: string;
+        };
+        Update: {
+          bucket?: number;
+          expires_at?: string;
+          hits?: number;
+          key?: string;
+        };
+        Relationships: [];
+      };
       rates: {
         Row: {
           category: Database['public']['Enums']['ai_category'];
@@ -1638,6 +1660,7 @@ export type Database = {
       };
       mfa_recent: { Args: { p_seconds?: number }; Returns: boolean };
       pgp_armor_headers: { Args: { '': string }; Returns: Record<string, unknown>[] };
+      rate_limit_hit: { Args: { p_key: string; p_limit: number; p_window_sec: number }; Returns: number };
       refund_job: { Args: { p_job_id: string; p_reason?: string }; Returns: number };
       set_platform_secret: {
         Args: { p_encrypted: string; p_hint: string; p_name: string };

@@ -8,6 +8,7 @@ import { render } from './handlers/render';
 import { expireCredits } from './handlers/expire';
 import { publish } from './handlers/publish';
 import { purgeWorkspaceMedia } from './handlers/purge';
+import { startServer } from './server';
 
 const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
@@ -46,15 +47,25 @@ for (const w of [media, renders]) {
   w.on('error', (err) => log('worker error', { error: err.message }));
 }
 
+const mediaQ = new Queue<MediaJobData>(MEDIA_QUEUE, { connection });
+const renderQ = new Queue<MediaJobData>(RENDER_QUEUE, { connection });
+const http = startServer({
+  port: env.WORKER_PORT,
+  token: env.WORKER_TOKEN,
+  queues: { [MEDIA_QUEUE]: mediaQ, [RENDER_QUEUE]: renderQ },
+  redisOk: async () => (await connection.ping().catch(() => '')) === 'PONG',
+});
+
 // Jadwal harian sapuan kredit hangus (02.00 WIB).
-const scheduler = new Queue<MediaJobData>(MEDIA_QUEUE, { connection });
+const scheduler = mediaQ;
 await scheduler.upsertJobScheduler('expire-credits', { pattern: '0 19 * * *', tz: 'UTC' }, { name: 'expire', data: { kind: 'expire', jobId: 'expire', workspaceId: '' } });
 
 log('worker siap', { media: MEDIA_QUEUE, render: RENDER_QUEUE, mock: env.AI_MOCK, storage: env.STORAGE_DRIVER });
 
 async function shutdown(sig: string) {
   log('mematikan worker', { sig });
-  await Promise.allSettled([media.close(), renders.close(), scheduler.close()]);
+  http.close();
+  await Promise.allSettled([media.close(), renders.close(), mediaQ.close(), renderQ.close()]);
   await connection.quit();
   process.exit(0);
 }

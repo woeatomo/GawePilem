@@ -9,7 +9,6 @@ const securityHeaders = [
 
 const config: NextConfig = {
   transpilePackages: ['@atomo/ai-gateway', '@atomo/credits', '@atomo/db', '@atomo/prompt-engine', '@atomo/timeline', '@atomo/publisher'],
-  serverExternalPackages: ['bullmq', 'ioredis'],
   poweredByHeader: false,
   images: { remotePatterns: [{ protocol: 'https', hostname: '**' }] },
   async headers() {

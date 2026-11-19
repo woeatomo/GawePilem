@@ -11,7 +11,9 @@ const schema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   ENCRYPTION_KEY: z.string().min(40, 'ENCRYPTION_KEY: 32 byte base64 (openssl rand -base64 32)'),
-  REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
+  /** URL HTTP worker (menerima job) dan token rahasia bersama. */
+  WORKER_URL: z.string().url().default('http://127.0.0.1:8787'),
+  WORKER_TOKEN: z.string().min(24, 'WORKER_TOKEN minimal 24 karakter (openssl rand -hex 24)'),
   OPENCODE_API_KEY: z.string().optional(),
   ELEVENLABS_API_KEY: z.string().optional(),
   FAL_KEY: z.string().optional(),

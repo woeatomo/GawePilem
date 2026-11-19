@@ -62,12 +62,6 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.119.0
         version: 2.119.0
-      bullmq:
-        specifier: ^5.0.0
-        version: 5.81.5
-      ioredis:
-        specifier: ^5.4.0
-        version: 5.11.1
       next:
         specifier: 16.4.6
         version: 16.4.6(@babel/core@7.29.13)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
