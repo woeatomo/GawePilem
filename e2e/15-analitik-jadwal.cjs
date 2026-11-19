@@ -10,7 +10,7 @@ const sql = (q) => execFileSync('docker', ['exec', 'supabase_db_atomo-film-studi
   const master = sql(`select r.id || '|' || r.episode_id from renders r join episodes e on e.id = r.episode_id where e.project_id = '${projectId}' and r.variant = 'master' and r.status = 'ready' order by r.created_at desc limit 1`).split('|');
   sql(`delete from social_accounts where workspace_id = '${ws}' and channel_id = 'UC-e2e'`);
   const acc = sql(`insert into social_accounts (workspace_id, user_id, platform, channel_id, channel_name, encrypted_tokens, scopes, metrics, metrics_at)
-    values ('${ws}', '${owner}', 'youtube', 'UC-e2e', 'Kanal Uji Atomo', 'x', array['https://www.googleapis.com/auth/yt-analytics.readonly'],
+    values ('${ws}', '${owner}', 'youtube', 'UC-e2e', 'Kanal Uji Pilem', 'x', array['https://www.googleapis.com/auth/yt-analytics.readonly'],
     '{"subscribers": 640, "views": 52000, "videos": 14, "watchMinutes365": 96000, "analyticsError": null}', now()) returning id`).split('\n')[0];
   sql(`insert into publications (workspace_id, render_id, episode_id, social_account_id, platform, variant, platform_video_id, privacy, status, published_at, metadata, metrics, metrics_at)
     values ('${ws}', '${master[0]}', '${master[1]}', '${acc}', 'youtube', 'youtube', 'vid-e2e-1', 'public', 'published', now() - interval '5 days',

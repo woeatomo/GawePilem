@@ -51,7 +51,7 @@ export async function render(ctx: Ctx, d: Extract<MediaJobData, { kind: 'render'
     const reframe = (r.reframe as 'crop' | 'blur' | null) ?? 'crop';
     // Watermark paket Free ditulis ke ASS (libass punya font cadangan), bukan drawtext yang gagal bila server render tanpa font default.
     const subsFor = async (tl: Timeline, name: string) => {
-      const watermark = plan === 'free' ? { text: 'Atomo Film Studio', untilSec: timelineDuration(tl) } : undefined;
+      const watermark = plan === 'free' ? { text: 'Pilem Studio', untilSec: timelineDuration(tl) } : undefined;
       if (!tl.tracks.subtitle.length && !watermark) return undefined;
       const ass = toAss(tl.tracks.subtitle, size, { karaoke: r.aspect_ratio === '9:16', ...(watermark ? { watermark } : {}) });
       return putBytes(ctx, `${r.workspace_id}/renders/${r.id}/${name}.ass`, ass, 'text/plain');

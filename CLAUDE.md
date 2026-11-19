@@ -1,6 +1,6 @@
-# Atomo Film Studio
+# Pilem Studio
 
-Web app untuk kreator yang ingin membuat film dan serial (microdrama, film pendek, dokumenter, iklan naratif) dengan AI, dari riset sampai auto-publish ke YouTube, YouTube Shorts, dan TikTok. Produk ini dibuat oleh Atomo Digipedia.
+**Pilem Studio**: web app untuk kreator yang ingin membuat film dan serial (microdrama, film pendek, dokumenter, iklan naratif) dengan AI, dari riset sampai auto-publish ke YouTube, YouTube Shorts, dan TikTok. Produk ini dibuat oleh Atomo Digipedia.
 
 Model bisnisnya: user membayar biaya AI dari **satu saldo kredit**, atau memakai API key sendiri (BYOK). Kita menjual workflow, prompt engine, editor, dan automasi publish.
 

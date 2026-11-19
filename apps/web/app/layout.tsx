@@ -4,7 +4,7 @@ import { ToastProvider } from '@/components/ui';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Atomo Film Studio', template: '%s · Atomo Film Studio' },
+  title: { default: 'Pilem Studio', template: '%s · Pilem Studio' },
   description: 'Studio produksi film & serial AI dalam satu dashboard. Kamu yang sutradara, AI kru-nya.',
   icons: { icon: '/icon.svg' },
 };

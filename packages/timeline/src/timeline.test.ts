@@ -143,9 +143,9 @@ describe('ASS & kompilasi', () => {
     expect(ass).toContain('Dialogue: 0,0:00:00.30,0:00:01.50,Default,,0,0,0,,{\\k60}Jangan {\\k60}dijawab');
   });
   it('watermark sebagai event ASS (tanpa drawtext)', () => {
-    const ass = toAss([], { width: 1280, height: 720 }, { watermark: { text: 'Atomo Film Studio', untilSec: 46.5 } });
+    const ass = toAss([], { width: 1280, height: 720 }, { watermark: { text: 'Pilem Studio', untilSec: 46.5 } });
     expect(ass).toContain('Style: Watermark,');
-    expect(ass).toContain('Dialogue: 1,0:00:00.00,0:00:47.50,Watermark,,0,0,0,,Atomo Film Studio');
+    expect(ass).toContain('Dialogue: 1,0:00:00.00,0:00:47.50,Watermark,,0,0,0,,Pilem Studio');
   });
 
   it('ukuran keluaran genap per rasio', () => {
@@ -189,7 +189,7 @@ describe.skipIf(!hasFfmpeg)('render FFmpeg sungguhan', () => {
     writeFileSync(subPath, toAss(base.tracks.subtitle, outputSize('9:16', '480p'), { karaoke: true }));
     const out = join(dir, 'out.mp4');
     const c = compileTimeline(base, {
-      outputPath: out, quality: '480p', subtitlePath: subPath, watermark: 'Atomo Film Studio', preset: 'ultrafast',
+      outputPath: out, quality: '480p', subtitlePath: subPath, watermark: 'Pilem Studio', preset: 'ultrafast',
       assets: {
         a: { path: join(dir, 'a.mp4'), kind: 'video' }, b: { path: join(dir, 'b.mp4'), kind: 'video' }, c: { path: join(dir, 'c.png'), kind: 'still' },
         vo1: { path: join(dir, 'vo1.wav'), kind: 'audio' }, mus: { path: join(dir, 'mus.wav'), kind: 'audio' }, knock: { path: join(dir, 'knock.wav'), kind: 'audio' },

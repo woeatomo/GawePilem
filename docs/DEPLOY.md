@@ -1,7 +1,7 @@
 # Deploy: serverless penuh (Cloudflare + Supabase + provider)
 
 ```
-Browser ──► Worker "atomo-film-studio" (web Next.js, OpenNext)
+Browser ──► Worker "pilem-studio" (web Next.js, OpenNext)
                │  Supabase (auth, data, RPC kredit)  ◄──────────────┐
                │  POST /enqueue (Bearer WORKER_TOKEN)                │
                ▼                                                     │

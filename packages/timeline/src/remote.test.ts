@@ -25,7 +25,7 @@ const assets = {
 
 describe('perintah remote', () => {
   it('join/split bolak-balik untuk filtergraph berisi kutip, kurung, titik koma', () => {
-    const args = ['-filter_complex', "[0:v]subtitles='{{in_sub}}',drawtext=text='Atomo Film':x=w-tw[v];[1:a]volume=1[a]", '-i', '{{in_v0}}', 'dengan spasi', 'kutip"ganda', '', '$HOME'];
+    const args = ['-filter_complex', "[0:v]subtitles='{{in_sub}}',drawtext=text='Pilem Studio':x=w-tw[v];[1:a]volume=1[a]", '-i', '{{in_v0}}', 'dengan spasi', 'kutip"ganda', '', '$HOME'];
     expect(splitCommand(joinCommand(args))).toEqual(args);
     expect(() => splitCommand('"tidak ditutup')).toThrow();
   });

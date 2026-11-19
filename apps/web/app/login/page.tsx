@@ -12,7 +12,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         <div className="row" style={{ gap: 12 }}>
           <Logo size={36} />
           <div>
-            <h1 style={{ fontSize: 20 }}>Atomo Film Studio</h1>
+            <h1 style={{ fontSize: 20 }}>Pilem Studio</h1>
             <p className="muted small">Kamu yang sutradara, AI kru-nya.</p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-# Atomo Film Studio
+# Pilem Studio
 
 Web app untuk kreator yang membuat film & serial (microdrama, film pendek, dokumenter, iklan naratif) dengan AI, dari riset sampai publish ke YouTube. Satu saldo kredit untuk semua kategori AI, atau BYOK.
 

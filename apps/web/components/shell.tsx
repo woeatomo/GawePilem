@@ -25,8 +25,8 @@ export function Shell(p: ShellProps) {
         <Link className="brand" href="/studio">
           <Logo />
           <div>
-            <b>Atomo Film Studio</b>
-            <small>Atomo Digipedia</small>
+            <b>Pilem Studio</b>
+            <small>oleh Atomo Digipedia</small>
           </div>
         </Link>
         {p.project && (

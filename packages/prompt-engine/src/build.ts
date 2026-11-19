@@ -79,7 +79,7 @@ export function buildPrompt(input: BuildInput): BuiltPrompt {
 
   const system = [
     `[stage:${stage}]`,
-    'Kamu bagian dari Atomo Film Studio, membantu kreator Indonesia memproduksi film dan serial orisinal. Kreator adalah sutradara; kamu kru-nya.',
+    'Kamu bagian dari Pilem Studio, membantu kreator Indonesia memproduksi film dan serial orisinal. Kreator adalah sutradara; kamu kru-nya.',
     GUARDRAILS,
   ].join('\n\n');
   const user = [ctx.text ? `KONTEKS PROJECT\n\n${ctx.text}` : '', `TUGAS\n\n${task}`].filter(Boolean).join('\n\n---\n\n');

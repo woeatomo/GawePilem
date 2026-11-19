@@ -37,7 +37,7 @@ export function MfaEnroll() {
       // Bersihkan faktor yang belum pernah diverifikasi supaya QR selalu baru.
       const { data: f } = await db.auth.mfa.listFactors();
       for (const x of f?.all ?? []) if (x.status === 'unverified') await db.auth.mfa.unenroll({ factorId: x.id });
-      const { data, error } = await db.auth.mfa.enroll({ factorType: 'totp', friendlyName: `Atomo ${new Date().toISOString().slice(0, 10)}` });
+      const { data, error } = await db.auth.mfa.enroll({ factorType: 'totp', friendlyName: `Pilem Studio ${new Date().toISOString().slice(0, 10)}` });
       if (error || !data) return setErr(error?.message ?? 'Gagal memulai aktivasi 2FA');
       setEnroll({ id: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
     })();

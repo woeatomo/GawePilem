@@ -50,7 +50,7 @@ export default async function Analitik() {
         <div>
           <p className="eyebrow">PERTUMBUHAN</p>
           <h1>Analitik channel</h1>
-          <p className="lede">Statistik video yang kamu unggah lewat Atomo, diperbarui otomatis tiap 6 jam dari YouTube. Pakai saran di tiap video untuk memperbaiki judul, thumbnail, dan pembuka episode berikutnya.</p>
+          <p className="lede">Statistik video yang kamu unggah lewat Pilem Studio, diperbarui otomatis tiap 6 jam dari YouTube. Pakai saran di tiap video untuk memperbaiki judul, thumbnail, dan pembuka episode berikutnya.</p>
         </div>
         <div className="vactions"><RefreshMetrics disabled={!accs?.some((a) => a.status === 'active')} /></div>
       </header>
@@ -81,7 +81,7 @@ export default async function Analitik() {
                     {y.watchHours && <Bar pct={y.watchHours.pct} />}
                   </div>
                   <div className="stat"><small>Total views channel</small><b>{fmt(c.views)}</b><span>{fmt(c.videos)} video</span></div>
-                  <div className="stat"><small>Rata-rata ditonton</small><b>{avgPct === null ? '–' : `${avgPct}%`}</b><span>video panjang dari Atomo</span></div>
+                  <div className="stat"><small>Rata-rata ditonton</small><b>{avgPct === null ? '–' : `${avgPct}%`}</b><span>video panjang dari Pilem Studio</span></div>
                 </div>
                 {c.analyticsError === 'scope' && (
                   <p className="note warn" style={{ marginTop: 10 }}>
@@ -95,7 +95,7 @@ export default async function Analitik() {
 
           <section className="card">
             <div className="card-h">
-              <h2>Video dari Atomo</h2>
+              <h2>Video dari Pilem Studio</h2>
               <span className="small muted">{fmt(totals.views)} views · {fmt(Math.round(totals.minutes / 60))} jam ditonton · +{fmt(totals.subs)} subscriber</span>
             </div>
             {rows.length === 0 ? (
