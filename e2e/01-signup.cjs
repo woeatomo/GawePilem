@@ -1,0 +1,26 @@
+const { open, shot, BASE } = require('./lib.cjs');
+(async () => {
+  const { b, p, errs, save } = await open();
+  await p.goto(BASE + '/login');
+  await p.click('text=Daftar');
+  await p.fill('#email', process.env.E2E_EMAIL ?? `kreator+${Date.now()}@atomo.test`);
+  await p.fill('#password', 'rahasia-123');
+  await p.click('button[type=submit]');
+  await p.waitForURL(/onboarding|login/, { timeout: 15000 });
+  console.log('setelah daftar:', p.url());
+  await shot(p, 'e2e-01-onboarding');
+  await p.fill('#name', 'Kreator Uji');
+  await p.check('input[name=age]');
+  await p.check('input[name=consent]');
+  await p.click('button[type=submit]');
+  await p.waitForURL(/studio/, { timeout: 15000 });
+  await p.goto(BASE + '/saldo');
+  await p.click('.pack >> nth=2');
+  await p.click('text=Simulasi bayar');
+  await p.waitForTimeout(2000);
+  console.log('saldo:', await p.textContent('.wallet .bal'));
+  await shot(p, 'e2e-02-saldo');
+  await save();
+  console.log('errors:', errs);
+  await b.close();
+})().catch((e) => { console.error('GAGAL', e.message); process.exit(1); });

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install FFmpeg & Postgres
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg postgresql
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Tes database (migrasi, RLS, RPC kredit)
+        run: pnpm test:db
+      - name: Build web
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Bundle Cloudflare (web OpenNext + Worker job), tanpa deploy
+        run: |
+          pnpm --filter @atomo/web cf:build
+          (cd apps/web && npx wrangler deploy --dry-run --outdir /tmp/cf-web)
+          (cd apps/jobs && npx wrangler deploy --dry-run --outdir /tmp/cf-jobs)
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          WRANGLER_SEND_METRICS: 'false'

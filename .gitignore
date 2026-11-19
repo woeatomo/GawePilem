@@ -12,3 +12,13 @@ coverage
 supabase/.temp
 test-results
 playwright-report
+supabase/.branches
+e2e/.out
+dump.rdb
+.open-next
+.wrangler
+.dev.vars
+apps/jobs/.dev.vars
+.render-local
+.deploy
+wrangler.production.json

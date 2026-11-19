@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   SEED_RATES,
+  AI_PROFILE_META,
+  detectProfile,
+  episodeEstimate,
+  findOffer,
+  PLAN_OFFERS,
   buildRateTable,
   rateTableToRows,
   RateTableError,
@@ -211,5 +216,36 @@ describe('ledger & FIFO', () => {
 
   it('pemakaian melebihi lot tercatat sebagai uncovered', () => {
     expect(replayLedger([topup('t1', 10, '2026-01-01'), usage('u', 15, '2026-01-02', 'j')]).uncovered).toBe(5);
+  });
+});
+
+describe('paket & mode AI', () => {
+  it('profil mode AI terdeteksi dari tier', () => {
+    expect(detectProfile({ naskah: 'standar', vo: 'standar', image: 'standar', video: 'standar' })).toBe('seimbang');
+    expect(detectProfile({ naskah: 'premium', vo: 'hemat', image: 'standar', video: 'standar' })).toBeNull();
+  });
+
+  it('episode 20 menit: Hemat < Seimbang < Gacor, hybrid lebih murah dari full AI', () => {
+    const t = (p: keyof typeof AI_PROFILE_META) => episodeEstimate({ minutes: 20, aiShare: 0.4 }, AI_PROFILE_META[p].tiers, SEED_RATES).total;
+    expect(t('hemat')).toBeLessThan(t('seimbang'));
+    expect(t('seimbang')).toBeLessThan(t('gacor'));
+    const full = episodeEstimate({ minutes: 20, aiShare: 1 }, AI_PROFILE_META.seimbang.tiers, SEED_RATES).total;
+    expect(t('seimbang')).toBeLessThan(full * 0.55);
+  });
+
+  it('paket serial menutup jumlah episode yang dijanjikan & lebih murah per kredit dari top-up', () => {
+    const ep = episodeEstimate({ minutes: 20, aiShare: 0.4 }, AI_PROFILE_META.seimbang.tiers, SEED_RATES).total;
+    for (const o of PLAN_OFFERS.filter((x) => x.kind === 'serial')) {
+      expect(o.credits).toBeGreaterThanOrEqual(ep * o.episodes!);
+      expect(o.priceIdr / o.credits).toBeLessThan(100);
+    }
+  });
+
+  it('langganan 3 bulan diskon 10% dengan kredit 3×', () => {
+    const m = findOffer('pro-1m')!;
+    const q = findOffer('pro-3m')!;
+    expect(q.credits).toBe(m.credits * 3);
+    expect(q.priceIdr).toBe(Math.round((m.priceIdr * 3 * 0.9) / 1000) * 1000);
+    expect(new Set(PLAN_OFFERS.map((o) => o.id)).size).toBe(PLAN_OFFERS.length);
   });
 });

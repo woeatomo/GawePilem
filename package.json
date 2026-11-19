@@ -6,19 +6,24 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @atomo/web --filter @atomo/worker dev",
+    "dev": "pnpm --parallel --filter @atomo/web --filter @atomo/jobs --filter @atomo/render-local dev",
     "build": "pnpm --filter @atomo/web build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "bash supabase/tests/run.sh",
+    "test:e2e": "bash e2e/run.sh",
     "lint": "eslint .",
     "typecheck": "pnpm -r --parallel typecheck",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e:anime": "bash e2e/run-anime.sh",
+    "deploy:prod": "node scripts/deploy.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
+    "@next/eslint-plugin-next": "16.4.6",
     "@types/node": "^24.0.0",
     "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.6.0",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.73.0",

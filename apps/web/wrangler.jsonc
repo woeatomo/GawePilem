@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pilem-studio",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "pilem-studio" }],
+  "observability": { "enabled": true },
+  // Variabel non-rahasia. Rahasia (SUPABASE_SERVICE_ROLE_KEY, ENCRYPTION_KEY, WORKER_TOKEN)
+  // diisi dengan: npx wrangler secret put <NAMA>
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://GANTI.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "GANTI",
+    "APP_URL": "https://GANTI-domain-web",
+    "WORKER_URL": "https://GANTI-domain-worker",
+    "AI_MOCK": "0",
+    "PAYMENTS_SANDBOX": "0",
+    "YOUTUBE_DAILY_UPLOADS": "100",
+    "YOUTUBE_AUDITED": "0",
+    "MIDTRANS_PRODUCTION": "0"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  // Worker job AI & render (serverless). Menggantikan worker VPS (BullMQ + FFmpeg lokal).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "atomo-jobs",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Generate gambar/VO berurutan butuh waktu tunggu jaringan (tidak dihitung CPU); CPU dinaikkan untuk dekripsi & mock.
+  "limits": { "cpu_ms": 300000 },
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "atomo-jobs" }],
+    "consumers": [
+      {
+        "queue": "atomo-jobs",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 5,
+        "retry_delay": 10,
+        "dead_letter_queue": "atomo-jobs-dlq"
+      }
+    ]
+  },
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "atomo-media" }],
+  // Sapuan kredit hangus harian (02.00 WIB) + turunkan paket yang habis periodenya (tiap jam).
+  "triggers": { "crons": ["0 19 * * *", "17 * * * *"] },
+  // Rahasia: wrangler secret put SUPABASE_SERVICE_ROLE_KEY / ENCRYPTION_KEY / WORKER_TOKEN
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://GANTI.supabase.co",
+    "MEDIA_PUBLIC_URL": "https://GANTI-domain-media",
+    "APP_URL": "https://GANTI-domain-web",
+    "AI_MOCK": "0",
+    "YOUTUBE_DAILY_UPLOADS": "100"
+  }
+}

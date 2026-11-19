@@ -1,0 +1,47 @@
+name: Deploy web (Cloudflare)
+
+# Build & upload web Pilem Studio ke Cloudflare Workers. Rahasia Worker (service role, ENCRYPTION_KEY,
+# WORKER_TOKEN) dipasang terpisah lewat scripts/deploy.mjs --secrets-only dan tidak disentuh di sini.
+# Jalan saat dipicu manual, atau saat push ke branch kerja dengan pesan commit berisi [deploy-web].
+on:
+  workflow_dispatch:
+  push:
+    branches: [ccr-aa86f928-9snksy]
+
+concurrency: deploy-web
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy-web]')
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: b1471808b262de9b49dabaef305603a5
+      SUPABASE_PROJECT_REF: yirwgztaauvcjzxeaykg
+      WORKERS_SUBDOMAIN: atomos
+      WEB_WORKER: pilem
+      FREE_TIER: '1'
+      # Publishable key Supabase memang publik (ikut terkirim ke browser).
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ng7XnNveymovEJ-7J7qu5A_Nz1Fbwps
+      NEXT_TELEMETRY_DISABLED: '1'
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Cek token
+        run: test -n "$CLOUDFLARE_API_TOKEN" || (echo "Tambahkan secret CLOUDFLARE_API_TOKEN di Settings → Secrets and variables → Actions" && exit 1)
+      - name: Build & deploy web
+        run: node scripts/deploy.mjs --only web --no-secrets
+      - name: Uji cepat
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://pilem.atomos.workers.dev/login)
+            [ "$code" = 200 ] && echo "web /login 200" && exit 0
+            sleep 10
+          done
+          echo "web belum 200 (terakhir $code)"; exit 1

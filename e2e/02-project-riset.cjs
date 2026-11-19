@@ -1,0 +1,23 @@
+const { open, shot, BASE } = require('./lib.cjs');
+const fs = require('fs');
+(async () => {
+  const { b, p, errs, save } = await open();
+  await p.goto(BASE + '/studio');
+  if (p.url().includes('/login')) throw new Error('sesi hilang');
+  await p.fill('#title', 'Kamar 7');
+  await p.fill('#topic', 'Kos-kosan tua di Yogyakarta. Mitos kamar nomor 7 yang selalu kosong, dengan tiga ketukan tiap jam 03.00. Penonton 18-34 tahun.');
+  await p.click('text=Buat project');
+  await p.waitForURL(/\/riset/, { timeout: 15000 });
+  const projectUrl = p.url().replace(/\/riset.*/, '');
+  fs.writeFileSync('project.txt', projectUrl);
+  console.log('project:', projectUrl);
+  await p.click('button:has-text("Riset dengan AI")');
+  await p.waitForSelector('text=Dipakai sebagai konteks', { timeout: 30000 });
+  await p.waitForTimeout(1500);
+  console.log('riset h4:', await p.locator('.out h4').allTextContents());
+  console.log('saldo:', await p.textContent('.wallet .bal'));
+  await shot(p, 'e2e-03-riset');
+  await save();
+  console.log('errors:', errs);
+  await b.close();
+})().catch((e) => { console.error('GAGAL', e.message); process.exit(1); });

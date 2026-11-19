@@ -1,0 +1,25 @@
+{
+  "name": "@atomo/jobs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787 --test-scheduled",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@atomo/ai-gateway": "workspace:*",
+    "@atomo/credits": "workspace:*",
+    "@atomo/db": "workspace:*",
+    "@atomo/prompt-engine": "workspace:*",
+    "@atomo/publisher": "workspace:*",
+    "@atomo/timeline": "workspace:*",
+    "@supabase/supabase-js": "^2.119.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261119.1",
+    "wrangler": "4.165.0"
+  }
+}
