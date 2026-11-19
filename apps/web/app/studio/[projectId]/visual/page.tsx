@@ -16,7 +16,7 @@ export default async function Page(props: { params: Promise<{ projectId: string 
         tier={data.settings.video.tier}
         shots={b.shots.map((s, i) => ({
           id: s.id, no: i + 1, sceneNo: s.scene_no, durationSec: Number(s.duration_sec), description: s.description, keyframeUrl: s.keyframe_url,
-          approved: s.approved, keyframeReady: s.keyframe_status === 'ready', clipStatus: s.clip_status, clipProgress: s.clip_progress, clipUrl: s.clip_url,
+          approved: s.approved, keyframeReady: s.keyframe_status === 'ready', clipStatus: s.clip_status, clipProgress: s.clip_progress, clipUrl: s.clip_url, motion: s.motion === 'camera' ? 'camera' : 'ai',
         }))}
       />
     </Stage>

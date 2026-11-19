@@ -129,3 +129,10 @@ export async function audit(
 }
 export * from './queue';
 export * from './secrets';
+
+/** Pecah daftar id untuk filter `.in()`: URL PostgREST punya batas panjang (episode panjang bisa ±400 shot). */
+export function chunks<T>(items: readonly T[], size = 100): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}

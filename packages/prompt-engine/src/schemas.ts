@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { editProposalSchema } from '@atomo/timeline';
+import { CAMERA_MOVES, editProposalSchema } from '@atomo/timeline';
 
 export const STAGES = ['research', 'characters', 'outline', 'scene', 'rewrite', 'shotlist', 'continuity', 'publish_meta', 'edit'] as const;
 export const stageSchema = z.enum(STAGES);
@@ -62,6 +62,9 @@ export const shotDraftSchema = z.object({
   dialog: z.string().trim().max(400).nullable().default(null),
   imagePrompt: trimmed(800),
   motionPrompt: z.string().trim().max(300).default(''),
+  /** 'ai' = image-to-video berbayar; 'camera' = gerak kamera dari frame kunci (gratis). */
+  motionType: z.preprocess((v) => (v === 'camera' ? 'camera' : 'ai'), z.enum(['ai', 'camera'])).default('ai'),
+  cameraMove: z.preprocess((v) => (typeof v === 'string' && (CAMERA_MOVES as readonly string[]).includes(v) ? v : 'push_in'), z.enum(CAMERA_MOVES)).default('push_in'),
 });
 export type ShotDraft = z.infer<typeof shotDraftSchema>;
 export const shotlistOutputSchema = z.object({ shots: z.array(shotDraftSchema).min(1).max(120) });

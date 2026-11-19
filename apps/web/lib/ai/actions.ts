@@ -17,14 +17,16 @@ export const actionParams = {
   outline: z.object({}),
   scene: z.object({ sceneNo: z.number().int().positive() }),
   rewrite: z.object({ sceneNo: z.number().int().positive(), instruction: z.string().trim().min(3).max(400) }),
-  shotlist: z.object({ replace: z.boolean().default(false) }),
+  /** sceneNo: pecah satu scene saja (episode panjang dipecah per scene agar output AI tidak terpotong). */
+  shotlist: z.object({ replace: z.boolean().default(false), sceneNo: z.number().int().positive().optional() }),
   continuity: z.object({}),
   publish_meta: z.object({}),
   edit: z.object({ instruction: z.string().trim().min(3, 'Tulis perintah edit').max(400) }),
   charref: z.object({ characterId: z.string().uuid() }),
-  keyframe: z.object({ shotIds: z.array(z.string().uuid()).min(1).max(60) }),
-  clip: z.object({ shotIds: z.array(z.string().uuid()).min(1).max(60) }),
-  vo: z.object({ lineIds: z.array(z.string()).min(1).max(200) }),
+  // Episode 20 menit ±300 shot & ±400 baris dialog.
+  keyframe: z.object({ shotIds: z.array(z.string().uuid()).min(1).max(400) }),
+  clip: z.object({ shotIds: z.array(z.string().uuid()).min(1).max(400) }),
+  vo: z.object({ lineIds: z.array(z.string()).min(1).max(600) }),
 } satisfies Record<ActionId, z.ZodType>;
 export type ActionParams<A extends ActionId> = z.infer<(typeof actionParams)[A]>;
 
@@ -49,7 +51,8 @@ export const CHARREF_ANGLES = ['depan', '3/4', 'samping', 'full'] as const;
 
 export interface QuantityContext {
   sceneCount: number;
-  shots: { id: string; durationSec: number }[];
+  /** motion 'camera' dirender sebagai gerak kamera dari frame kunci: tidak memotong kredit video. */
+  shots: { id: string; durationSec: number; motion?: 'ai' | 'camera' }[];
   lines: { id: string; estimatedSec: number }[];
 }
 
@@ -65,14 +68,14 @@ export function quantities(action: ActionId, params: unknown, ctx: QuantityConte
     case 'edit':
       return [{ category: 'naskah', quantity: 1 }];
     case 'shotlist':
-      return [{ category: 'naskah', quantity: Math.max(1, ctx.sceneCount) }];
+      return [{ category: 'naskah', quantity: (params as ActionParams<'shotlist'>).sceneNo ? 1 : Math.max(1, ctx.sceneCount) }];
     case 'charref':
       return [{ category: 'image', quantity: CHARREF_ANGLES.length }];
     case 'keyframe':
       return [{ category: 'image', quantity: (params as ActionParams<'keyframe'>).shotIds.length }];
     case 'clip': {
       const ids = new Set((params as ActionParams<'clip'>).shotIds);
-      const sec = ctx.shots.filter((s) => ids.has(s.id)).reduce((a, s) => a + s.durationSec, 0);
+      const sec = ctx.shots.filter((s) => ids.has(s.id) && s.motion !== 'camera').reduce((a, s) => a + s.durationSec, 0);
       return [{ category: 'video', quantity: Math.ceil(sec) }];
     }
     case 'vo': {

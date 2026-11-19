@@ -81,8 +81,8 @@ export function NewProject() {
               <input id="episodes" name="episodes" type="number" min={1} max={100} value={v.episodes} onChange={(e) => set('episodes', Number(e.target.value))} />
             </div>
             <div>
-              <label className="lbl" htmlFor="duration">Durasi/eps (detik)</label>
-              <input id="duration" name="duration" type="number" min={15} max={3600} value={v.duration} onChange={(e) => set('duration', Number(e.target.value))} />
+              <label className="lbl" htmlFor="duration">Durasi/eps (menit, maks 20)</label>
+              <input id="duration" name="durationMin" type="number" min={0.25} max={20} step={0.25} value={v.duration / 60} onChange={(e) => set('duration', Math.round(Math.min(20, Number(e.target.value)) * 60))} />
             </div>
           </div>
         </div>

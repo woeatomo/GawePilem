@@ -1189,6 +1189,7 @@ export type Database = {
         Row: {
           approved: boolean;
           camera: string;
+          camera_move: string;
           character_ids: string[];
           clip_progress: number;
           clip_status: Database['public']['Enums']['asset_status'];
@@ -1201,6 +1202,7 @@ export type Database = {
           id: string;
           keyframe_status: Database['public']['Enums']['asset_status'];
           keyframe_url: string | null;
+          motion: string;
           order_index: number;
           prompt: string;
           scene_no: number;
@@ -1212,6 +1214,7 @@ export type Database = {
         Insert: {
           approved?: boolean;
           camera?: string;
+          camera_move?: string;
           character_ids?: string[];
           clip_progress?: number;
           clip_status?: Database['public']['Enums']['asset_status'];
@@ -1224,6 +1227,7 @@ export type Database = {
           id?: string;
           keyframe_status?: Database['public']['Enums']['asset_status'];
           keyframe_url?: string | null;
+          motion?: string;
           order_index: number;
           prompt?: string;
           scene_no: number;
@@ -1234,6 +1238,7 @@ export type Database = {
         Update: {
           approved?: boolean;
           camera?: string;
+          camera_move?: string;
           character_ids?: string[];
           clip_progress?: number;
           clip_status?: Database['public']['Enums']['asset_status'];
@@ -1246,6 +1251,7 @@ export type Database = {
           id?: string;
           keyframe_status?: Database['public']['Enums']['asset_status'];
           keyframe_url?: string | null;
+          motion?: string;
           order_index?: number;
           prompt?: string;
           scene_no?: number;

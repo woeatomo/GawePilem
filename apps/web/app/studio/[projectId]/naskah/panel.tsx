@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { addBlankScene, restoreScriptVersion, saveScene } from '@/app/actions';
 import { EpisodeSwitch } from '@/components/episode-switch';
 import { ScreenplayPage } from '@/components/screenplay';
-import { AIButton } from '@/components/use-ai';
+import { AIButton, BatchAIButton } from '@/components/use-ai';
 import { fmt, timecode, useToast } from '@/components/ui';
 import type { ContinuityOutput } from '@atomo/prompt-engine';
 
@@ -50,6 +50,14 @@ export function ScriptPanel(p: {
           {issues && (issues.length ? <span className="pill warn">{issues.length} catatan kontinuitas</span> : <span className="pill good">Kontinuitas: 0 konflik</span>)}
           {p.scenes.some((s) => s.body) && (
             <AIButton action="continuity" params={{}} items={[{ category: 'naskah', quantity: 1 }]} label="Cek kontinuitas" variant="secondary" onData={(d) => setIssues((d as ContinuityOutput).issues)} />
+          )}
+          {p.scenes.filter((s) => !s.body).length > 1 && (
+            <BatchAIButton
+              action="scene"
+              steps={p.scenes.flatMap((s, i) => (s.body ? [] : [{ params: { sceneNo: i + 1 }, items: [{ category: 'naskah' as const, quantity: 1 }], label: `Tulis SC ${i + 1}` }]))}
+              label={`Tulis ${p.scenes.filter((s) => !s.body).length} scene kosong`}
+              variant="primary"
+            />
           )}
           <AIButton
             action="outline"

@@ -10,6 +10,8 @@ import { buildTimeline } from '@/lib/assemble';
 import { loadProject } from '@/lib/project';
 import { getSession, requireSession } from '@/lib/auth';
 import { parseScript } from '@/lib/project';
+import { MAX_EPISODE_SEC } from '@/lib/stages';
+import { CAMERA_MOVES, type CameraMove } from '@atomo/timeline';
 import { supabaseAdmin, supabaseServer } from '@/lib/supabase/server';
 import { enqueueMedia } from '@/lib/queue';
 import { audit } from '@atomo/db';
@@ -65,7 +67,7 @@ const projectSchema = z.object({
   aspect: z.enum(['9:16', '16:9', '1:1']),
   style: z.string().trim().min(2).max(60).refine((s) => VISUAL_STYLES.some((v) => v.id === s), 'Gaya visual tidak dikenal'),
   episodes: z.coerce.number().int().min(1).max(100),
-  duration: z.coerce.number().int().min(15).max(3600),
+  durationMin: z.coerce.number().min(0.25, 'Durasi minimal 15 detik').max(MAX_EPISODE_SEC / 60, 'Durasi episode maksimal 20 menit'),
   topic: z.string().trim().max(2000).default(''),
 });
 
@@ -76,7 +78,7 @@ export async function createProject(_: ActionState, form: FormData): Promise<Act
   const d = p.data;
   const { data: project, error } = await s.db
     .from('projects')
-    .insert({ workspace_id: s.workspaceId, title: d.title, format: d.format, genre: d.genre, aspect_ratio: d.aspect, visual_style: d.style, episode_count: d.episodes, target_duration_sec: d.duration, created_by: s.userId })
+    .insert({ workspace_id: s.workspaceId, title: d.title, format: d.format, genre: d.genre, aspect_ratio: d.aspect, visual_style: d.style, episode_count: d.episodes, target_duration_sec: Math.round(d.durationMin * 60), created_by: s.userId })
     .select('id')
     .single();
   if (error || !project) return fail(error?.message ?? 'Gagal membuat project');
@@ -187,9 +189,19 @@ export async function restoreScriptVersion(episodeId: string, version: number): 
 
 // ---------- storyboard ----------
 
-export async function updateShot(shotId: string, patch: { durationSec?: number; description?: string; camera?: string; approved?: boolean }): Promise<ActionState> {
+export async function updateShot(shotId: string, patch: { durationSec?: number; description?: string; camera?: string; approved?: boolean; motion?: 'ai' | 'camera'; cameraMove?: CameraMove }): Promise<ActionState> {
   const s = await requireSession();
-  const p = z.object({ durationSec: z.number().min(1).max(15).optional(), description: z.string().max(300).optional(), camera: z.string().max(80).optional(), approved: z.boolean().optional() }).parse(patch);
+  const p = z
+    .object({
+      durationSec: z.number().min(1).max(15).optional(), description: z.string().max(300).optional(), camera: z.string().max(80).optional(), approved: z.boolean().optional(),
+      motion: z.enum(['ai', 'camera']).optional(), cameraMove: z.enum(CAMERA_MOVES).optional(),
+    })
+    .parse(patch);
+  if (p.motion !== undefined || p.cameraMove !== undefined || p.durationSec !== undefined) {
+    // Jangan ubah cara gerak/durasi saat klip sedang dirender: tagihan & refund dihitung dari nilai ini.
+    const { data: cur } = await s.db.from('shots').select('clip_status').eq('id', shotId).single();
+    if (cur?.clip_status === 'queued' || cur?.clip_status === 'running') return fail('Klip shot ini sedang dirender. Tunggu selesai dulu.');
+  }
   const { error } = await s.db
     .from('shots')
     .update({
@@ -197,6 +209,8 @@ export async function updateShot(shotId: string, patch: { durationSec?: number; 
       ...(p.description !== undefined ? { description: p.description } : {}),
       ...(p.camera !== undefined ? { camera: p.camera } : {}),
       ...(p.approved !== undefined ? { approved: p.approved } : {}),
+      ...(p.motion !== undefined ? { motion: p.motion } : {}),
+      ...(p.cameraMove !== undefined ? { camera_move: p.cameraMove } : {}),
     })
     .eq('id', shotId);
   if (error) return fail(error.message);

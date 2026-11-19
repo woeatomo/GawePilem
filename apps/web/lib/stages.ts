@@ -15,3 +15,6 @@ export const FORMAT_LABEL: Record<string, string> = {
   microdrama: 'Microdrama vertikal', film_pendek: 'Film pendek', serial: 'Serial episodik', dokumenter: 'Dokumenter pendek', iklan: 'Iklan naratif', animasi: 'Animasi',
 };
 export const GENRE_OPTIONS = ['horor', 'drama', 'thriller', 'misteri', 'romance', 'komedi', 'action', 'sci-fi', 'fantasi', 'sejarah', 'religi', 'anak'];
+
+/** Batas durasi episode (detik): bebas, maksimal 20 menit. Sama dengan constraint DB. */
+export const MAX_EPISODE_SEC = 1200;

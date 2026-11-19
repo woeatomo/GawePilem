@@ -1,7 +1,7 @@
 import { ProviderError, type CharacterReference } from '@atomo/ai-gateway';
-import type { Job, MediaJobData, Row } from '@atomo/db';
+import { chunks, type MediaJobData, type Row } from '@atomo/db';
 import { extractDialog, findStyle } from '@atomo/prompt-engine';
-import { stillToClipCommand } from '@atomo/timeline';
+import { stillToClipCommand, type CameraMove, type Quality, type Timeline } from '@atomo/timeline';
 import type { Ctx } from '../ctx';
 import { beginJob, deadlineFrom, failJob, loadRunningJob, progress, succeedJob } from '../job';
 import type { InternalMessage } from '../messages';
@@ -89,7 +89,7 @@ export async function keyframes(ctx: Ctx, d: Extract<MediaJobData, { kind: 'keyf
   const acc: Acc = d.acc ?? { done: 0, failed: 0, failedSec: 0 };
   const late = deadlineFrom(Date.now());
   try {
-    const { data: shots } = await ctx.admin.from('shots').select('*').in('id', d.shotIds);
+    const shots = await shotsByIds(ctx, d.shotIds);
     if (!shots?.length) throw new ProviderError('Shot tidak ditemukan', 'jobs', 'bad_request');
     const p = await projectOfEpisode(ctx, shots[0]!.episode_id);
     const vs = findStyle(p.visual_style);
@@ -136,7 +136,7 @@ export async function clips(ctx: Ctx, d: Extract<MediaJobData, { kind: 'clip' }>
   if (!job) return;
   const late = deadlineFrom(Date.now());
   try {
-    const { data: shots } = await ctx.admin.from('shots').select('*').in('id', d.shotIds);
+    const shots = await shotsByIds(ctx, d.shotIds);
     if (!shots?.length) throw new ProviderError('Shot tidak ditemukan', 'jobs', 'bad_request');
     const p = await projectOfEpisode(ctx, shots[0]!.episode_id);
     const setting = await ctx.settingFor(job.workspace_id, 'video', job);
@@ -152,6 +152,11 @@ export async function clips(ctx: Ctx, d: Extract<MediaJobData, { kind: 'clip' }>
       try {
         if (!s.approved || !s.keyframe_url) throw new ProviderError('Shot belum disetujui atau belum punya frame kunci', 'jobs', 'bad_request');
         await ctx.admin.from('shots').update({ clip_status: 'running', clip_progress: 5 }).eq('id', s.id);
+        if (s.motion === 'camera') {
+          // Hybrid: gerak kamera dari frame kunci, dirender FFmpeg (tanpa biaya video AI).
+          await submitCameraClip(ctx, { jobId: job.id, workspaceId: job.workspace_id, shotId: s.id, imageUrl: s.keyframe_url, durationSec: Number(s.duration_sec), aspect: p.aspect_ratio, quality: resolution, move: s.camera_move as CameraMove });
+          continue;
+        }
         const { handle } = await gw.startVideo(setting, { imageUrl: s.keyframe_url, prompt: shotPrompt(s).motion, durationSec: Number(s.duration_sec), aspect: p.aspect_ratio, resolution });
         await ctx.send({ kind: 'clip_poll', jobId: job.id, workspaceId: job.workspace_id, shotId: s.id, handle, deadline: Date.now() + 20 * 60_000 }, POLL_SEC(ctx));
       } catch (e) {
@@ -186,9 +191,7 @@ export async function clipPoll(ctx: Ctx, m: Extract<InternalMessage, { kind: 'cl
       // Mode demo: klip gerak kamera dari frame kunci, dirender di layanan FFmpeg.
       const { data: s } = await ctx.admin.from('shots').select('keyframe_url, duration_sec, episode_id').eq('id', m.shotId).single();
       const p = await projectOfEpisode(ctx, s!.episode_id);
-      const cmd = stillToClipCommand({ imageUrl: s!.keyframe_url!, durationSec: Number(s!.duration_sec), aspect: p.aspect_ratio, quality: '480p', outputName: `clip-${m.shotId}.mp4` });
-      const commandId = await (await ctx.render()).submit(cmd, { maxSeconds: 300, vcpu: 2 });
-      return ctx.send({ kind: 'ffmpeg_poll', jobId: m.jobId, workspaceId: m.workspaceId, purpose: 'clip', targetId: m.shotId, commandId, key: `${m.workspaceId}/shots/${m.shotId}/clip-${m.jobId}`, deadline: Date.now() + 15 * 60_000, startedAt: Date.now(), expectedSec: Number(s!.duration_sec) }, 2);
+      return submitCameraClip(ctx, { jobId: m.jobId, workspaceId: m.workspaceId, shotId: m.shotId, imageUrl: s!.keyframe_url!, durationSec: Number(s!.duration_sec), aspect: p.aspect_ratio, quality: '480p', move: 'push_in' });
     }
     const url = await putFromUrl(ctx, `${m.workspaceId}/shots/${m.shotId}/clip-${m.jobId}`, st.videoUrl, 'video/mp4');
     await ctx.admin.from('shots').update({ clip_url: url, clip_status: 'ready', clip_progress: 100 }).eq('id', m.shotId);
@@ -200,20 +203,34 @@ export async function clipPoll(ctx: Ctx, m: Extract<InternalMessage, { kind: 'cl
   }
 }
 
-/** Job klip selesai bila semua shot-nya final; refund proporsional untuk detik yang gagal. */
+async function shotsByIds(ctx: Ctx, ids: string[]) {
+  const parts = await Promise.all(chunks(ids).map((c) => ctx.admin.from('shots').select('*').in('id', c)));
+  const err = parts.find((r) => r.error)?.error;
+  if (err) throw new ProviderError(err.message, 'jobs', 'unknown');
+  return parts.flatMap((r) => r.data ?? []);
+}
+
+async function submitCameraClip(ctx: Ctx, o: { jobId: string; workspaceId: string; shotId: string; imageUrl: string; durationSec: number; aspect: Timeline['aspect']; quality: Quality; move: CameraMove }) {
+  const cmd = stillToClipCommand({ imageUrl: o.imageUrl, durationSec: o.durationSec, aspect: o.aspect, quality: o.quality, move: o.move, outputName: `clip-${o.shotId}.mp4` });
+  const commandId = await (await ctx.render()).submit(cmd, { maxSeconds: 300, vcpu: 2 });
+  await ctx.send({ kind: 'ffmpeg_poll', jobId: o.jobId, workspaceId: o.workspaceId, purpose: 'clip', targetId: o.shotId, commandId, key: `${o.workspaceId}/shots/${o.shotId}/clip-${o.jobId}`, deadline: Date.now() + 15 * 60_000, startedAt: Date.now(), expectedSec: o.durationSec }, 2);
+}
+
+/** Job klip selesai bila semua shot-nya final; refund proporsional untuk detik video AI yang gagal (shot gerak kamera tidak ditagih). */
 export async function finishClipsIfDone(ctx: Ctx, jobId: string) {
   const job = await loadRunningJob(ctx, jobId);
   if (!job) return;
   const ids = (job.input as { params?: { shotIds?: string[] } }).params?.shotIds ?? [];
-  const { data: shots } = await ctx.admin.from('shots').select('id, clip_status, duration_sec').in('id', ids);
+  const shots = await shotsByIds(ctx, ids);
   if (!shots || shots.some((s) => s.clip_status === 'queued' || s.clip_status === 'running')) {
     if (shots) await progress(ctx, jobId, (shots.filter((s) => s.clip_status === 'ready' || s.clip_status === 'failed').length / Math.max(1, ids.length)) * 100);
     return;
   }
-  const totalSec = shots.reduce((a, s) => a + Number(s.duration_sec), 0);
-  const failedSec = shots.filter((s) => s.clip_status === 'failed').reduce((a, s) => a + Number(s.duration_sec), 0);
-  if (failedSec >= totalSec) return void (await failJob(ctx, jobId, new ProviderError('Semua klip gagal dirender', 'video', 'unknown')));
-  await succeedJob(ctx, job, { ok: shots.length, failedSec }, Math.round((job.cost * failedSec) / Math.max(1, totalSec)), `${failedSec} detik video gagal dirender`);
+  if (shots.every((s) => s.clip_status === 'failed')) return void (await failJob(ctx, jobId, new ProviderError('Semua klip gagal dirender', 'video', 'unknown')));
+  const ai = shots.filter((s) => s.motion !== 'camera');
+  const totalSec = ai.reduce((a, s) => a + Number(s.duration_sec), 0);
+  const failedSec = ai.filter((s) => s.clip_status === 'failed').reduce((a, s) => a + Number(s.duration_sec), 0);
+  await succeedJob(ctx, job, { ok: shots.length, failedSec }, totalSec > 0 ? Math.round((job.cost * failedSec) / totalSec) : 0, `${failedSec} detik video gagal dirender`);
 }
 
 // ---------------- voice over (dengan kelanjutan) ----------------

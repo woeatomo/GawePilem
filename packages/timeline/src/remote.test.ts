@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { joinCommand, remoteCommand, RenderClient, splitCommand, stillToClipCommand, toAss, outputSize, type Timeline } from './index';
+import { CAMERA_MOVES, joinCommand, remoteCommand, RenderClient, splitCommand, stillToClipCommand, toAss, outputSize, type Timeline } from './index';
 
 const tl: Timeline = {
   fps: 24,
@@ -45,6 +45,19 @@ describe('perintah remote', () => {
     const r = stillToClipCommand({ imageUrl: 'https://m/x.png', durationSec: 3, aspect: '9:16', outputName: 'c.mp4' });
     expect(r.inputFiles).toEqual({ in_img: 'https://m/x.png' });
     expect(splitCommand(r.command)).toContain('{{in_img}}');
+  });
+
+  it('tiap gerak kamera menghasilkan ekspresi zoompan berbeda', () => {
+    const vf = (move: (typeof CAMERA_MOVES)[number]) => {
+      const a = splitCommand(stillToClipCommand({ imageUrl: 'https://m/x.png', durationSec: 2, aspect: '16:9', outputName: 'c.mp4', move }).command);
+      return a[a.indexOf('-vf') + 1]!;
+    };
+    const all = CAMERA_MOVES.map(vf);
+    expect(new Set(all).size).toBe(CAMERA_MOVES.length);
+    expect(vf('pan_right')).toContain("x='(iw-iw/zoom)*on/47'");
+    expect(vf('push_in')).toContain("z='1+0.12*on/47'");
+    // default tetap push-in (perilaku lama)
+    expect(stillToClipCommand({ imageUrl: 'u', durationSec: 2, aspect: '16:9', outputName: 'c.mp4' }).command).toContain('1+0.12*on/47');
   });
 });
 

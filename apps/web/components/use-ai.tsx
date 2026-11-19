@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { CATEGORY_META, describeEstimate, estimate, requiresConfirmation, type Category, type Estimate } from '@atomo/credits';
 import { Modal, fmt, useToast } from './ui';
 import { useStudio } from './studio-context';
@@ -10,6 +10,8 @@ import type { ActionId } from '@/lib/ai/actions';
 export interface RunOptions {
   onDelta?: (fullText: string) => void;
   onData?: (data: unknown) => void;
+  /** Konfirmasi sudah diminta untuk total batch. */
+  preconfirmed?: boolean;
 }
 
 interface ApiError {
@@ -41,12 +43,12 @@ export function useAI() {
 
   const run = useCallback(
     async (action: ActionId, params: unknown, est: Estimate, label: string, opts: RunOptions = {}): Promise<boolean> => {
-      if (est.total > balance) {
+      if (est.total > balance && !opts.preconfirmed) {
         setInsufficient({ need: est.total });
         return false;
       }
-      let confirmed = false;
-      if (requiresConfirmation(est.total)) {
+      let confirmed = Boolean(opts.preconfirmed);
+      if (!confirmed && requiresConfirmation(est.total)) {
         confirmed = await new Promise<boolean>((resolve) => setConfirm({ est, label, resolve }));
         setConfirm(null);
         if (!confirmed) return false;
@@ -158,7 +160,75 @@ export function useAI() {
     </>
   );
 
-  return { run, busy, dialogs };
+  const ask = useCallback(
+    async (est: Estimate, label: string) => {
+      if (est.total > balance) {
+        setInsufficient({ need: est.total });
+        return false;
+      }
+      if (!requiresConfirmation(est.total)) return true;
+      const ok = await new Promise<boolean>((resolve) => setConfirm({ est, label, resolve }));
+      setConfirm(null);
+      return ok;
+    },
+    [balance],
+  );
+
+  return { run, ask, busy, dialogs };
+}
+
+export interface BatchStep {
+  params: unknown;
+  items: { category: Category; quantity: number }[];
+  label: string;
+}
+
+/**
+ * Jalankan aksi AI yang sama untuk banyak langkah (mis. tiap scene episode panjang) secara berurutan.
+ * Estimasi total ditampilkan di tombol dan dikonfirmasi sekali; tiap langkah tetap ditagih & di-refund sendiri.
+ */
+export function BatchAIButton({ action, steps, label, variant = 'secondary', disabled }: { action: ActionId; steps: BatchStep[]; label: string; variant?: 'primary' | 'secondary'; disabled?: boolean }) {
+  const { settings, rates } = useStudio();
+  const all = useEstimate(steps.flatMap((s) => s.items));
+  const { run, ask, dialogs } = useAI();
+  const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
+  const [stop, setStop] = useState(false);
+  const stopRef = useRef(false);
+  const toast = useToast();
+  const start = async () => {
+    if (!(await ask(all, label))) return;
+    stopRef.current = false;
+    setStop(false);
+    setProg({ done: 0, total: steps.length });
+    let done = 0;
+    for (const st of steps) {
+      if (stopRef.current) break;
+      const est = estimate(st.items.map((i) => ({ ...i, tier: settings[i.category].tier, billingMode: settings[i.category].mode })), rates);
+      const ok = await run(action, st.params, est, st.label, { preconfirmed: true });
+      if (!ok) break;
+      done++;
+      setProg({ done, total: steps.length });
+    }
+    if (done === steps.length) toast(`${label}: ${done} langkah selesai`);
+    else if (done > 0) toast(`${label} berhenti di ${done}/${steps.length}. Jalankan lagi untuk sisanya.`, 'info');
+    setProg(null);
+  };
+  const costLabel = all.total === 0 && all.lines.every((l) => l.billingMode === 'byok') ? 'BYOK' : `${fmt(all.total)} kr`;
+  return (
+    <>
+      {prog ? (
+        <button className="btn" onClick={() => { stopRef.current = true; setStop(true); }} disabled={stop}>
+          {stop ? 'Menghentikan…' : `Memproses ${prog.done + 1}/${prog.total} · Hentikan`}
+        </button>
+      ) : (
+        <button className={`btn ${variant === 'primary' ? 'primary' : ''}`} disabled={disabled || !steps.length} onClick={() => void start()} title={describeEstimate(all)}>
+          {label}
+          <span className="cost">{costLabel}</span>
+        </button>
+      )}
+      {dialogs}
+    </>
+  );
 }
 
 /** Tombol aksi AI dengan badge biaya (estimasi sebelum generate). */

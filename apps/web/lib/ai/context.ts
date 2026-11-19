@@ -19,7 +19,7 @@ export function dialogLines(b: ProjectBundle) {
 export function quantityContext(b: ProjectBundle): QuantityContext {
   return {
     sceneCount: b.script?.content.scenes.length ?? 0,
-    shots: b.shots.map((s) => ({ id: s.id, durationSec: Number(s.duration_sec) })),
+    shots: b.shots.map((s) => ({ id: s.id, durationSec: Number(s.duration_sec), motion: s.motion === 'camera' ? 'camera' : 'ai' })),
     lines: dialogLines(b).map((l) => ({ id: l.id, estimatedSec: l.estimatedSec })),
   };
 }

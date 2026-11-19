@@ -108,6 +108,7 @@ Balas HANYA dengan scene hasil revisi.`,
   {
     stage: 'shotlist', genre: '*', format: '*', version: 1, weight: 100,
     body: `Kamu sutradara dan storyboard artist. Pecah naskah episode menjadi shot list untuk rasio {{aspect}}, gaya visual "{{style}}".
+Cakupan: {{scope}}.
 
 {{styleGuide}}
 
@@ -119,9 +120,11 @@ Aturan:
 - dialog: kalimat yang diucapkan di shot ini (atau null).
 - imagePrompt: deskripsi frame kunci dalam bahasa Inggris untuk model gambar (komposisi, cahaya, lensa, mood, gaya "{{style}}"). Rujuk karakter dengan namanya; jangan deskripsikan ulang wajah (wajah diambil dari reference terkunci). Ikuti awalan gaya dari panduan gaya di atas, dan sebut kostum khas tokoh agar konsisten.
 - motionPrompt: gerakan untuk image-to-video dalam bahasa Inggris, singkat.
+- motionType: "ai" hanya untuk shot yang butuh gerak tokoh/objek nyata (aksi, ekspresi berubah, bicara close-up, efek). Shot lain "camera" (establishing, insert, reaksi diam, narasi, pemandangan). Targetkan paling banyak ±40% shot "ai".
+- cameraMove (untuk shot "camera"): push_in, pull_out, pan_left, pan_right, tilt_up, tilt_down, atau static.
 
 Balas HANYA JSON:
-{"shots": [{"sceneNo": number, "shotType": string, "camera": string, "durationSec": number, "description": string, "characters": string[], "dialog": string|null, "imagePrompt": string, "motionPrompt": string}]}`,
+{"shots": [{"sceneNo": number, "shotType": string, "camera": string, "durationSec": number, "description": string, "characters": string[], "dialog": string|null, "imagePrompt": string, "motionPrompt": string, "motionType": "ai"|"camera", "cameraMove": string}]}`,
   },
   {
     stage: 'continuity', genre: '*', format: '*', version: 1, weight: 100,

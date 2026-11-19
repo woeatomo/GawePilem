@@ -83,13 +83,34 @@ export function remoteCommand(
 }
 
 /** Klip dari gambar diam dengan slow push-in (gerak kamera tanpa model video AI). */
-export function stillToClipCommand(o: { imageUrl: string; durationSec: number; aspect: Timeline['aspect']; quality?: Quality; outputName: string; fps?: number }): RemoteCommand {
+/** Gerak kamera virtual dari satu gambar (alternatif murah untuk image-to-video). */
+export const CAMERA_MOVES = ['push_in', 'pull_out', 'pan_left', 'pan_right', 'tilt_up', 'tilt_down', 'static'] as const;
+export type CameraMove = (typeof CAMERA_MOVES)[number];
+
+/** Ekspresi zoompan (z, x, y) untuk tiap gerak; `on` = nomor frame keluaran, `N` = jumlah frame. */
+function moveExpr(move: CameraMove, frames: number): { z: string; x: string; y: string } {
+  const t = `on/${Math.max(1, frames - 1)}`;
+  const cx = 'iw/2-(iw/zoom/2)';
+  const cy = 'ih/2-(ih/zoom/2)';
+  switch (move) {
+    case 'push_in': return { z: `1+0.12*${t}`, x: cx, y: cy };
+    case 'pull_out': return { z: `1.12-0.12*${t}`, x: cx, y: cy };
+    case 'pan_left': return { z: '1.15', x: `(iw-iw/zoom)*(1-${t})`, y: cy };
+    case 'pan_right': return { z: '1.15', x: `(iw-iw/zoom)*${t}`, y: cy };
+    case 'tilt_up': return { z: '1.15', x: cx, y: `(ih-ih/zoom)*(1-${t})` };
+    case 'tilt_down': return { z: '1.15', x: cx, y: `(ih-ih/zoom)*${t}` };
+    case 'static': return { z: `1+0.02*${t}`, x: cx, y: cy };
+  }
+}
+
+export function stillToClipCommand(o: { imageUrl: string; durationSec: number; aspect: Timeline['aspect']; quality?: Quality; outputName: string; fps?: number; move?: CameraMove }): RemoteCommand {
   const { width: W, height: H } = outputSize(o.aspect, o.quality ?? '720p');
   const fps = o.fps ?? 24;
   const frames = Math.max(1, Math.round(o.durationSec * fps));
+  const e = moveExpr(o.move ?? 'push_in', frames);
   const vf =
     `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,crop=${W * 2}:${H * 2},` +
-    `zoompan=z='min(zoom+0.0008,1.12)':d=${frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${fps},format=yuv420p`;
+    `zoompan=z='${e.z}':d=${frames}:x='${e.x}':y='${e.y}':s=${W}x${H}:fps=${fps},format=yuv420p`;
   const args = ['-hide_banner', '-y', '-loop', '1', '-i', '{{in_img}}', '-vf', vf, '-frames:v', String(frames), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '{{out_1}}'];
   return { command: joinCommand(args), inputFiles: { in_img: o.imageUrl }, outputFiles: { out_1: o.outputName }, duration: o.durationSec };
 }

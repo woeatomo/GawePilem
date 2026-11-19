@@ -14,7 +14,7 @@ export interface Preset {
 
 export const PRESETS: readonly Preset[] = [
   {
-    id: 'anime', label: 'Serial anime', format: 'serial', genre: 'fantasi', style: 'anime', aspect: '16:9', episodes: 12, duration: 360,
+    id: 'anime', label: 'Serial anime', format: 'serial', genre: 'fantasi', style: 'anime', aspect: '16:9', episodes: 12, duration: 1200,
     titleHint: 'Penjaga Gerbang Senja',
     topicHint: 'Dunia, tokoh utama dan keinginannya, konflik musim ini, target penonton. Mis. remaja penjaga gerbang dunia roh di kota pelabuhan fiktif.',
   },
@@ -29,7 +29,7 @@ export const PRESETS: readonly Preset[] = [
     topicHint: 'Drama romantis bergaya webtoon: dua tokoh dengan rahasia, satu kesepakatan yang mengikat mereka, cliffhanger tiap episode.',
   },
   {
-    id: 'donghua', label: 'Donghua fantasi', format: 'serial', genre: 'fantasi', style: 'donghua 3D', aspect: '16:9', episodes: 16, duration: 480,
+    id: 'donghua', label: 'Donghua fantasi', format: 'serial', genre: 'fantasi', style: 'donghua 3D', aspect: '16:9', episodes: 16, duration: 1200,
     titleHint: 'Pedang Sembilan Awan',
     topicHint: 'Fantasi kultivasi: murid sekte kecil, sistem kekuatan dengan harga yang harus dibayar, rival, dan rahasia asal-usul.',
   },

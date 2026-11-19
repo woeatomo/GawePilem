@@ -1,7 +1,7 @@
 import 'server-only';
 import { ProviderError, type ProviderSetting } from '@atomo/ai-gateway';
 import { estimate, requiresConfirmation, type Category, type Estimate } from '@atomo/credits';
-import { chargeAndEnqueue, CreditError, jobFail, jobRunning, jobSucceed, type Json, type Job } from '@atomo/db';
+import { chargeAndEnqueue, chunks, CreditError, jobFail, jobRunning, jobSucceed, type Json, type Job } from '@atomo/db';
 import {
   buildPrompt, moderateText, moderationMessage, OUTPUT_SCHEMAS, sceneHeading, findModelContext,
   type CharactersOutput, type OutlineOutput, type ShotlistOutput,
@@ -133,15 +133,15 @@ export async function executeAction(input: ExecuteInput): Promise<ExecuteResult>
   if (meta.kind === 'media') {
     const data = mediaJob(action, params, job.id, s.workspaceId, b.episode.id);
     // Tandai aset sebagai antre dulu supaya UI langsung menampilkan status.
-    if (data.kind === 'keyframe') await admin.from('shots').update({ keyframe_status: 'queued' }).in('id', data.shotIds);
-    if (data.kind === 'clip') await admin.from('shots').update({ clip_status: 'queued', clip_progress: 0 }).in('id', data.shotIds);
+    if (data.kind === 'keyframe') for (const c of chunks(data.shotIds)) await admin.from('shots').update({ keyframe_status: 'queued' }).in('id', c);
+    if (data.kind === 'clip') for (const c of chunks(data.shotIds)) await admin.from('shots').update({ clip_status: 'queued', clip_progress: 0 }).in('id', c);
     try {
       await enqueueMedia(data);
     } catch (e) {
       // Antrean tidak tersedia: kembalikan kredit, jangan biarkan job menggantung.
       await jobFail(admin, job.id, `Antrean tidak tersedia: ${(e as Error).message}`);
-      if (data.kind === 'keyframe') await admin.from('shots').update({ keyframe_status: 'empty' }).in('id', data.shotIds);
-      if (data.kind === 'clip') await admin.from('shots').update({ clip_status: 'empty' }).in('id', data.shotIds);
+      if (data.kind === 'keyframe') for (const c of chunks(data.shotIds)) await admin.from('shots').update({ keyframe_status: 'empty' }).in('id', c);
+      if (data.kind === 'clip') for (const c of chunks(data.shotIds)) await admin.from('shots').update({ clip_status: 'empty' }).in('id', c);
       throw new ActionError(503, 'queue_down', 'Antrean render sedang tidak tersedia. Kredit sudah dikembalikan, coba lagi sebentar.');
     }
     return { kind: 'queued', job };
@@ -226,9 +226,12 @@ function precheck(action: ActionId, p: Record<string, unknown>, b: ProjectBundle
     throw new ActionError(400, 'no_scene', 'Scene tidak ditemukan. Buat outline dulu.');
   if (action === 'rewrite' && !scenes[(p.sceneNo as number) - 1]?.body) throw new ActionError(400, 'empty_scene', 'Scene ini belum ditulis.');
   if (action === 'shotlist') {
+    const n = p.sceneNo as number | undefined;
+    if (n !== undefined && !scenes[n - 1]?.body) throw new ActionError(400, 'empty_scene', `Scene ${n} belum ditulis.`);
     if (!scenes.some((s) => s.body)) throw new ActionError(400, 'no_script', 'Tulis naskah dulu sebelum membuat shot list.');
-    if (b.shots.length && !p.replace) throw new ActionError(409, 'shots_exist', 'Shot list sudah ada. Konfirmasi untuk mengganti.');
-    if (b.shots.some((s) => s.clip_status === 'ready') && p.replace)
+    const affected = n === undefined ? b.shots : b.shots.filter((s) => s.scene_no === n);
+    if (affected.length && !p.replace) throw new ActionError(409, 'shots_exist', 'Shot list sudah ada. Konfirmasi untuk mengganti.');
+    if (affected.some((s) => s.clip_status === 'ready') && p.replace)
       throw new ActionError(409, 'clips_exist', 'Beberapa shot sudah dirender jadi video. Hapus manual dulu agar render tidak hilang.');
   }
   if (action === 'characters' && !b.bible?.research && !b.bible?.topic) throw new ActionError(400, 'no_research', 'Isi ide dan riset dulu.');
@@ -256,6 +259,7 @@ function precheck(action: ActionId, p: Record<string, unknown>, b: ProjectBundle
 function contextScenes(action: ActionId, p: Record<string, unknown>, b: ProjectBundle): { scenes?: 'all' | number[] } {
   const n = p.sceneNo as number | undefined;
   if (action === 'scene' && n) return { scenes: [n - 1, n + 1].filter((x) => x > 0 && x <= (b.script?.content.scenes.length ?? 0)) };
+  if (action === 'shotlist' && n) return { scenes: [n] };
   if (action === 'shotlist' || action === 'continuity' || action === 'publish_meta') return { scenes: 'all' };
   return {};
 }
@@ -276,6 +280,12 @@ function promptVars(action: ActionId, p: Record<string, unknown>, b: ProjectBund
       return { sceneNo: n, instruction: p.instruction as string, sceneText: scenes[n - 1]?.body ?? '' };
     case 'edit':
       return { instruction: p.instruction as string, timeline: compactTimeline(b) };
+    case 'shotlist': {
+      if (p.sceneNo === undefined) return { scope: 'seluruh episode' };
+      // Target per scene: bagi rata durasi episode, minimal 10 detik.
+      const perScene = Math.max(10, Math.round(b.project.target_duration_sec / Math.max(1, scenes.length)));
+      return { scope: `HANYA scene ${n} (${scenes[n - 1]?.heading ?? ''}); semua sceneNo = ${n}`, targetSec: perScene };
+    }
     default:
       return {};
   }
@@ -377,16 +387,19 @@ async function persistStructured(action: ActionId, p: Record<string, unknown>, b
       const d = data as ShotlistOutput;
       const byName = new Map(b.characters.map((c) => [c.name.toLowerCase(), c.id]));
       const sceneCount = b.script?.content.scenes.length ?? 1;
-      if (b.shots.length) await s.db.from('shots').delete().eq('episode_id', b.episode.id);
+      const only = p.sceneNo as number | undefined;
+      if (only !== undefined) {
+        if (b.shots.some((x) => x.scene_no === only)) await s.db.from('shots').delete().eq('episode_id', b.episode.id).eq('scene_no', only);
+      } else if (b.shots.length) await s.db.from('shots').delete().eq('episode_id', b.episode.id);
       const order = new Map<number, number>();
       const rows = d.shots.map((sh) => {
-        const sceneNo = Math.min(Math.max(1, sh.sceneNo), sceneCount);
+        const sceneNo = only ?? Math.min(Math.max(1, sh.sceneNo), sceneCount);
         const idx = order.get(sceneNo) ?? 0;
         order.set(sceneNo, idx + 1);
         return {
           episode_id: b.episode.id, workspace_id: ws, scene_no: sceneNo, order_index: idx, shot_type: sh.shotType, camera: sh.camera,
           duration_sec: sh.durationSec, description: sh.description, dialog: sh.dialog,
-          prompt: JSON.stringify({ image: sh.imagePrompt, motion: sh.motionPrompt }),
+          prompt: JSON.stringify({ image: sh.imagePrompt, motion: sh.motionPrompt }), motion: sh.motionType, camera_move: sh.cameraMove,
           character_ids: sh.characters.map((n) => byName.get(n.toLowerCase())).filter((x): x is string => Boolean(x)),
         };
       });

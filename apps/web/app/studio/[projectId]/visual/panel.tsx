@@ -8,7 +8,7 @@ import { fmt1, timecode } from '@/components/ui';
 
 interface S {
   id: string; no: number; sceneNo: number; durationSec: number; description: string; keyframeUrl: string | null; approved: boolean;
-  keyframeReady: boolean; clipStatus: string; clipProgress: number; clipUrl: string | null;
+  keyframeReady: boolean; clipStatus: string; clipProgress: number; clipUrl: string | null; motion: 'ai' | 'camera';
 }
 
 const STATUS: Record<string, [string, string]> = {
@@ -19,7 +19,8 @@ export function VisualPanel(p: { projectId: string; episode: number; aspect: str
   const renderable = p.shots.filter((s) => s.approved && s.keyframeReady && (s.clipStatus === 'empty' || s.clipStatus === 'failed'));
   const [picked, setPicked] = useState<Set<string>>(() => new Set(renderable.map((s) => s.id)));
   const sel = useMemo(() => renderable.filter((s) => picked.has(s.id)), [renderable, picked]);
-  const sec = Math.ceil(sel.reduce((a, s) => a + s.durationSec, 0));
+  const sec = Math.ceil(sel.filter((s) => s.motion === 'ai').reduce((a, s) => a + s.durationSec, 0));
+  const camCount = sel.filter((s) => s.motion === 'camera').length;
   const done = p.shots.filter((s) => s.clipStatus === 'ready');
   const running = p.shots.filter((s) => s.clipStatus === 'queued' || s.clipStatus === 'running');
   const unapproved = p.shots.filter((s) => !s.approved).length;
@@ -33,7 +34,7 @@ export function VisualPanel(p: { projectId: string; episode: number; aspect: str
           <p className="lede">Frame kunci yang sudah disetujui dihidupkan jadi klip video. Pakai tier Hemat (480p) untuk draft, Premium (1080p) untuk final. Tier sekarang: {p.tier} · {VIDEO_RESOLUTION[p.tier]}.</p>
         </div>
         <div className="vactions">
-          <AIButton action="clip" params={{ shotIds: sel.map((s) => s.id) }} items={[{ category: 'video', quantity: sec }]} label={`Render ${sel.length} shot · ${sec} dtk`} disabled={!sel.length} />
+          <AIButton action="clip" params={{ shotIds: sel.map((s) => s.id) }} items={[{ category: 'video', quantity: sec }]} label={`Render ${sel.length} shot · ${sec} dtk AI${camCount ? ` + ${camCount} gerak kamera` : ''}`} disabled={!sel.length} />
         </div>
       </header>
       {unapproved > 0 && (
@@ -44,7 +45,7 @@ export function VisualPanel(p: { projectId: string; episode: number; aspect: str
       <div className="stats">
         <div className="stat"><small>Klip selesai</small><b>{done.length}/{p.shots.length}</b><span>{fmt1(done.reduce((a, s) => a + s.durationSec, 0))} detik</span></div>
         <div className="stat"><small>Sedang dirender</small><b>{running.length}</b><span>diperbarui otomatis</span></div>
-        <div className="stat"><small>Dipilih</small><b>{sel.length}</b><span>{sec} detik video</span></div>
+        <div className="stat"><small>Dipilih</small><b>{sel.length}</b><span>{sec} dtk video AI · {camCount} gerak kamera gratis</span></div>
         <div className="stat"><small>Resolusi</small><b>{VIDEO_RESOLUTION[p.tier]}</b><span>ubah di Provider AI</span></div>
       </div>
       <section className="card">
@@ -78,7 +79,7 @@ export function VisualPanel(p: { projectId: string; episode: number; aspect: str
                         }} />
                       </td>
                       <td className="mono">#{s.no} · SC{s.sceneNo}</td>
-                      <td className="small">{s.description}{!s.approved && <span className="pill warn" style={{ marginLeft: 6 }}>belum disetujui</span>}</td>
+                      <td className="small"><span className={`pill ${s.motion === 'ai' ? 'acc' : ''}`} style={{ marginRight: 6 }}>{s.motion === 'ai' ? 'Video AI' : 'Gerak kamera'}</span>{s.description}{!s.approved && <span className="pill warn" style={{ marginLeft: 6 }}>belum disetujui</span>}</td>
                       <td className="num-r">{timecode(s.durationSec)}</td>
                       <td><span className={`pill ${cls}`}>{label}</span></td>
                       <td><div className={`bar ${s.clipStatus === 'ready' ? 'done' : ''}`}><i style={{ width: `${s.clipStatus === 'ready' ? 100 : s.clipProgress}%` }} /></div></td>

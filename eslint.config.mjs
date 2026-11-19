@@ -4,7 +4,7 @@ import nextPlugin from '@next/eslint-plugin-next';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/next-env.d.ts', 'supabase/**'] },
+  { ignores: ['**/node_modules/**', '**/.next/**', '**/.open-next/**', '**/.wrangler/**', '**/dist/**', '**/next-env.d.ts', 'supabase/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

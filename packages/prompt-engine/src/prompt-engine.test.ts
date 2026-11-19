@@ -125,6 +125,9 @@ describe('fixture mock valid terhadap skema', () => {
 
   it('shotType dinormalisasi', () => {
     const s = shotlistOutputSchema.parse({ shots: [{ sceneNo: 1, shotType: ' cu', durationSec: '3', description: 'd', imagePrompt: 'p' }] });
+    expect(s.shots[0]).toMatchObject({ motionType: 'ai', cameraMove: 'push_in' });
+    const h = shotlistOutputSchema.parse({ shots: [{ sceneNo: 1, shotType: 'WS', durationSec: 3, description: 'd', imagePrompt: 'p', motionType: 'camera', cameraMove: 'zoom aneh' }] });
+    expect(h.shots[0]).toMatchObject({ motionType: 'camera', cameraMove: 'push_in' });
     expect(s.shots[0]).toMatchObject({ shotType: 'CU', durationSec: 3, camera: 'statis', dialog: null });
   });
 });

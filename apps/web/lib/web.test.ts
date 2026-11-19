@@ -37,6 +37,10 @@ describe('estimasi aksi (client & server memakai fungsi yang sama)', () => {
     const ctx = quantityContext(b);
     expect(quantities('shotlist', {}, ctx)).toEqual([{ category: 'naskah', quantity: 3 }]);
     expect(quantities('clip', { shotIds: ['s0', 's1'] }, ctx)).toEqual([{ category: 'video', quantity: 7 }]);
+    // Hybrid: shot gerak kamera tidak memotong kredit video.
+    const hybrid = { ...ctx, shots: ctx.shots.map((s) => (s.id === 's0' ? { ...s, motion: 'camera' as const } : s)) };
+    expect(quantities('clip', { shotIds: ['s0', 's1'] }, hybrid)).toEqual([{ category: 'video', quantity: 3 }]);
+    expect(quantities('clip', { shotIds: ['s0'] }, hybrid)).toEqual([{ category: 'video', quantity: 0 }]);
     const lines = dialogLines(b);
     const vo = quantities('vo', { lineIds: lines.map((l) => l.id) }, ctx);
     const e = estimate(vo.map((v) => ({ ...v, tier: 'standar' as const, billingMode: 'saldo' as const })), SEED_RATES);
