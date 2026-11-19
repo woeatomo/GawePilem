@@ -17,9 +17,10 @@ Tidak ada platform tonton sendiri. Distribusi hanya lewat platform eksternal.
 | --- | --- |
 | Web app | Next.js (App Router) + TypeScript strict + Tailwind, deploy ke Cloudflare Workers (OpenNext) |
 | Auth, DB, storage file kecil | Supabase (Postgres, Auth, RLS, Storage) |
-| Antrean job | Redis + BullMQ (hanya di worker; web mengirim job lewat HTTP `POST /enqueue` bertoken) |
-| Worker render & perakitan video | Node.js + FFmpeg (container terpisah) |
-| Object storage aset besar | S3-compatible + CDN |
+| Antrean job | Cloudflare Queues (web → `POST /enqueue` bertoken ke Worker `apps/jobs`; tunggu hasil lewat pesan tertunda) |
+| Worker job AI | Cloudflare Worker `apps/jobs` (consumer Queue + cron), tanpa server |
+| Render & perakitan video | Rendi (FFmpeg cloud) dari perintah hasil `packages/timeline`; dev: emulator `apps/render-local` |
+| Object storage aset besar | Cloudflare R2 (binding di `apps/jobs`) + domain publik |
 | Validasi | zod di setiap batas (API route, output LLM, webhook) |
 | Tes | Vitest (unit), Playwright (alur utama) |
 | Pembayaran | Payment gateway lokal (QRIS, VA, e-wallet) via webhook |
@@ -29,7 +30,8 @@ Tidak ada platform tonton sendiri. Distribusi hanya lewat platform eksternal.
 ```
 apps/
   web/            # Next.js: UI kreator, admin panel, API routes
-  worker/         # BullMQ consumers: AI jobs, render FFmpeg, publish
+  jobs/           # Cloudflare Worker: consumer Queue job AI, render (Rendi), publish, cron
+  render-local/   # emulator API Rendi (FFmpeg lokal) untuk dev & E2E
 packages/
   ai-gateway/     # interface per kategori AI + adapter provider + metering
   prompt-engine/  # template prompt per tahap x genre x format, versioned
@@ -45,10 +47,10 @@ supabase/
 
 ```
 pnpm install
-pnpm dev                       # web (Next.js :3000) + worker (BullMQ)
+pnpm dev                       # web :3000 + Worker job :8787 (Queue & R2 lokal) + emulator Rendi :8790
 pnpm test                      # Vitest semua paket (render FFmpeg nyata ikut dites bila ffmpeg ada)
 pnpm test:db                   # migrasi + RLS + RPC kredit di Postgres sementara (tanpa Docker)
-pnpm test:e2e                  # alur utama via Playwright; butuh supabase start, redis, web (build+start), worker, AI_MOCK=1
+pnpm test:e2e                  # alur utama via Playwright; butuh supabase start, web, apps/jobs, render-local, AI_MOCK=1
 pnpm lint && pnpm typecheck
 pnpm build                     # build web
 pnpm test:e2e:anime            # alur serial anime 16:9 + teaser 9:16
@@ -180,6 +182,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - Teks UI berbahasa Indonesia. Identifier kode berbahasa Inggris.
 - Jangan commit secret. Semua key lewat env (`OPENCODE_API_KEY`, `ELEVENLABS_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, dll.) dan sediakan `.env.example`.
 - Setiap job panjang (render, publish) harus idempotent dan bisa di-retry dengan aman.
+- Kode di `apps/jobs` dan adapter yang dipakai di Workers: jangan menyimpan `fetch` global ke properti lalu memanggilnya sebagai method (gagal "Illegal invocation"); bungkus `(i, init) => fetch(i, init)`. Jangan memuat file besar ke memori (batas 128 MB): stream ke/dari R2.
 - Tampilan mengikuti prototype: tema gelap ala ruang editing, aksen amber, font Bricolage Grotesque, IBM Plex Sans, dan IBM Plex Mono untuk timecode dan angka.
 
 ## Urutan pengerjaan
@@ -192,7 +195,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [x] Prompt engine v1: riset, karakter, naskah, shot list (genre horor dan drama dulu)
 - [x] Modul UI tahap 1–4 sesuai prototype
 - [x] Adapter gambar + consistency (reference image karakter)
-- [x] Adapter video (image-to-video) + antrean BullMQ + progres (polling job, belum Supabase Realtime)
+- [x] Adapter video (image-to-video) + antrean (kini Cloudflare Queues) + progres (polling job, belum Supabase Realtime)
 - [x] Adapter VO (ElevenLabs) dengan voice lock per karakter
 - [x] Timeline JSON + rakit otomatis + render FFmpeg + export MP4
 - [x] Publish manual ke YouTube
@@ -208,7 +211,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [x] Moderasi sebelum publish (prefilter teks; antrean review manual belum ada UI)
 - [x] Hapus akun & ekspor data (UU PDP)
 - [x] Halaman secret platform untuk superadmin dengan 2FA TOTP (`/admin/secrets`)
-- [x] Deploy: web di Cloudflare Workers (OpenNext), media di R2, worker Docker di VPS (`docs/DEPLOY.md`)
+- [x] Deploy serverless penuh: web & job di Cloudflare Workers, antrean Cloudflare Queues, media R2, render di Rendi, tanpa VPS (`docs/DEPLOY.md`)
 - [x] Mode anime (panduan gaya & model sheet karakter) + master 16:9 dengan teaser 9:16 untuk Shorts (reframe blur/crop)
 - [x] 14 gaya visual (registri `VISUAL_STYLES` di prompt-engine: anime, chibi, kartun 2D, webtoon, donghua 3D, 3D keluarga, stop motion, wayang & batik, pixel art, dokumenter, dll.) + 9 preset project; genre anak otomatis 'made for kids' di YouTube
 

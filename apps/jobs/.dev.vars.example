@@ -1,0 +1,12 @@
+# Salin ke apps/jobs/.dev.vars untuk `pnpm dev`. Nilai sama dengan .env web.
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=
+ENCRYPTION_KEY=
+WORKER_TOKEN=
+# Dev: media disajikan Worker ini dari R2 lokal. Produksi: domain publik bucket R2.
+MEDIA_PUBLIC_URL=http://localhost:8787/media
+APP_URL=http://localhost:3000
+AI_MOCK=1
+# Dev: emulator Rendi lokal (apps/render-local). Produksi: kosongkan → api.rendi.dev + RENDI_API_KEY di /admin/secrets.
+RENDER_BASE_URL=http://127.0.0.1:8790
+RENDER_API_KEY=local

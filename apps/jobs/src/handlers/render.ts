@@ -1,6 +1,6 @@
 import { ProviderError } from '@atomo/ai-gateway';
 import type { MediaJobData } from '@atomo/db';
-import { outputSize, remoteCommand, sliceTimeline, timelineSchema, toAss, type Quality, type RemoteAsset, type Timeline } from '@atomo/timeline';
+import { outputSize, remoteCommand, sliceTimeline, timelineDuration, timelineSchema, toAss, type Quality, type RemoteAsset, type Timeline } from '@atomo/timeline';
 import type { Ctx } from '../ctx';
 import { beginJob, failJob, loadRunningJob, progress, succeedJob } from '../job';
 import type { InternalMessage } from '../messages';
@@ -41,13 +41,16 @@ export async function render(ctx: Ctx, d: Extract<MediaJobData, { kind: 'render'
     }
     const quality = (r.resolution as Quality) ?? '720p';
     const size = outputSize(r.aspect_ratio, quality);
+    // Watermark paket Free ditulis ke ASS (libass punya font cadangan), bukan drawtext yang gagal bila server render tanpa font default.
+    const watermark = plan === 'free' ? { text: 'Atomo Film Studio', untilSec: timelineDuration(timeline) } : undefined;
     let subtitleUrl: string | undefined;
-    if (timeline.tracks.subtitle.length) {
-      subtitleUrl = await putBytes(ctx, `${r.workspace_id}/renders/${r.id}/subs.ass`, toAss(timeline.tracks.subtitle, size, { karaoke: r.aspect_ratio === '9:16' }), 'text/plain');
+    if (timeline.tracks.subtitle.length || watermark) {
+      const ass = toAss(timeline.tracks.subtitle, size, { karaoke: r.aspect_ratio === '9:16', ...(watermark ? { watermark } : {}) });
+      subtitleUrl = await putBytes(ctx, `${r.workspace_id}/renders/${r.id}/subs.ass`, ass, 'text/plain');
     }
     const cmd = remoteCommand(timeline, {
       assets, quality, outputName: `${r.id}.mp4`, outputAspect: r.aspect_ratio, reframe: (r.reframe as 'crop' | 'blur' | null) ?? 'crop',
-      ...(subtitleUrl ? { subtitleUrl } : {}), ...(plan === 'free' ? { watermark: 'Atomo Film Studio' } : {}),
+      ...(subtitleUrl ? { subtitleUrl } : {}),
     });
     const commandId = await (await ctx.render()).submit(cmd, { maxSeconds: Math.max(300, Math.round(cmd.duration * 6)), vcpu: 8 });
     await ctx.admin.from('renders').update({ status: 'running', progress: 2, error: null }).eq('id', r.id);

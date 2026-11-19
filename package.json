@@ -6,7 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @atomo/web --filter @atomo/worker dev",
+    "dev": "pnpm --parallel --filter @atomo/web --filter @atomo/jobs --filter @atomo/render-local dev",
     "build": "pnpm --filter @atomo/web build",
     "test": "vitest run",
     "test:watch": "vitest",

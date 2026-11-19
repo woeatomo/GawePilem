@@ -9,7 +9,8 @@ Spesifikasi lengkap ada di [CLAUDE.md](./CLAUDE.md).
 | Path | Isi |
 | --- | --- |
 | `apps/web` | Next.js 16 (App Router): UI 8 tahap produksi, Saldo & tarif, Provider AI, API route AI/render/publish |
-| `apps/worker` | Worker BullMQ: reference image karakter, frame kunci, image-to-video, VO, render FFmpeg, upload YouTube, sapuan kredit hangus |
+| `apps/jobs` | Cloudflare Worker: antrean job (Queues), reference image, frame kunci, image-to-video, VO, render via Rendi, upload YouTube, cron kredit hangus |
+| `apps/render-local` | Emulator API Rendi (FFmpeg lokal) untuk dev & E2E |
 | `packages/credits` | Tarif, estimasi, budget cap, ledger FIFO 12 bulan (logika murni + tes) |
 | `packages/ai-gateway` | Satu-satunya pintu ke provider AI: OpenCode Zen (teks), fal (gambar/video), ElevenLabs (VO), mock; BYOK AES-256-GCM, retry, fallback, output zod |
 | `packages/prompt-engine` | Template per tahap × genre × format (A/B), konteks terpangkas, guardrail, variasi cerita, moderasi prefilter, parser naskah |
@@ -20,11 +21,11 @@ Spesifikasi lengkap ada di [CLAUDE.md](./CLAUDE.md).
 
 ## Deploy
 
-Web di Cloudflare Workers, media di Cloudflare R2, worker (FFmpeg) di VPS dengan Docker: lihat **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+Serverless penuh: web & job di Cloudflare Workers, antrean Cloudflare Queues, media R2, AI & render di provider (tanpa VPS). Lihat **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 ## Menjalankan lokal
 
-Butuh Node 22, pnpm 10, Docker (untuk Supabase lokal), Redis, dan FFmpeg.
+Butuh Node 22, pnpm 10, Docker (untuk Supabase lokal), dan FFmpeg (untuk emulator render).
 
 ```bash
 pnpm install
@@ -32,8 +33,8 @@ cp .env.example .env            # isi kunci; biarkan AI_MOCK=1 untuk mencoba tan
 supabase start                  # Supabase lokal (Docker), salin anon & service key ke .env
 supabase db reset               # terapkan migrasi + seed tarif
 openssl rand -base64 32         # → ENCRYPTION_KEY
-redis-server &                  # antrean BullMQ
-pnpm dev                        # web (http://localhost:3000) + worker
+cp apps/jobs/.dev.vars.example apps/jobs/.dev.vars   # nilai sama dengan .env
+pnpm dev                        # web :3000 + Worker job :8787 + emulator Rendi :8790
 ```
 
 Dengan `AI_MOCK=1` dan `PAYMENTS_SANDBOX=1`, seluruh alur bisa dicoba tanpa biaya: daftar → top-up sandbox di **Saldo & tarif** → buat project → riset → karakter (reference image + kunci) → naskah → storyboard → render klip → VO → render MP4.

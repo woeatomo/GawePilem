@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC = ['/login', '/auth', '/api/media', '/kebijakan'];
+const PUBLIC = ['/login', '/auth', '/kebijakan'];
 
 /** Menyegarkan sesi Supabase di setiap request dan melindungi halaman yang butuh login. */
 export async function proxy(request: NextRequest) {

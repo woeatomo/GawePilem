@@ -142,6 +142,12 @@ describe('ASS & kompilasi', () => {
     expect(ass).toContain('PlayResY: 1920');
     expect(ass).toContain('Dialogue: 0,0:00:00.30,0:00:01.50,Default,,0,0,0,,{\\k60}Jangan {\\k60}dijawab');
   });
+  it('watermark sebagai event ASS (tanpa drawtext)', () => {
+    const ass = toAss([], { width: 1280, height: 720 }, { watermark: { text: 'Atomo Film Studio', untilSec: 46.5 } });
+    expect(ass).toContain('Style: Watermark,');
+    expect(ass).toContain('Dialogue: 1,0:00:00.00,0:00:47.50,Watermark,,0,0,0,,Atomo Film Studio');
+  });
+
   it('ukuran keluaran genap per rasio', () => {
     expect(outputSize('9:16', '1080p')).toEqual({ width: 1080, height: 1920 });
     expect(outputSize('16:9', '480p')).toEqual({ width: 854, height: 480 });

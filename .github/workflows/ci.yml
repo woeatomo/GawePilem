@@ -27,3 +27,11 @@ jobs:
         run: pnpm build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+      - name: Bundle Cloudflare (web OpenNext + Worker job), tanpa deploy
+        run: |
+          pnpm --filter @atomo/web cf:build
+          (cd apps/web && npx wrangler deploy --dry-run --outdir /tmp/cf-web)
+          (cd apps/jobs && npx wrangler deploy --dry-run --outdir /tmp/cf-jobs)
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          WRANGLER_SEND_METRICS: 'false'

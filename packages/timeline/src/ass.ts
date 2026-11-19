@@ -15,7 +15,11 @@ function escapeAss(text: string): string {
 /**
  * Subtitle gaya short-form (ASS). karaoke=true menyorot kata yang sedang diucapkan (\k).
  */
-export function toAss(subs: readonly Subtitle[], size: { width: number; height: number }, opts: { karaoke?: boolean; font?: string } = {}): string {
+export function toAss(
+  subs: readonly Subtitle[],
+  size: { width: number; height: number },
+  opts: { karaoke?: boolean; font?: string; watermark?: { text: string; untilSec: number } } = {},
+): string {
   const vertical = size.height > size.width;
   const fontSize = Math.round((vertical ? size.width : size.height) * (vertical ? 0.062 : 0.055));
   const marginV = Math.round(size.height * (vertical ? 0.2 : 0.08));
@@ -29,6 +33,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Watermark,${font},${Math.round(fontSize * 0.45)},&H8CFFFFFF,&H8CFFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,9,${Math.round(size.width * 0.03)},${Math.round(size.width * 0.03)},${Math.round(size.height * 0.025)},1
 Style: Default,${font},${fontSize},&H00FFFFFF,&H003AA6F0,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,${Math.max(2, Math.round(fontSize / 12))},1,2,${Math.round(size.width * 0.08)},${Math.round(size.width * 0.08)},${marginV},1
 
 [Events]
@@ -48,6 +53,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       } else text = escapeAss(s.text);
       return `Dialogue: 0,${assTime(s.start)},${assTime(s.end)},Default,,0,0,0,,${text}`;
     });
+  if (opts.watermark) lines.unshift(`Dialogue: 1,${assTime(0)},${assTime(opts.watermark.untilSec + 1)},Watermark,,0,0,0,,${escapeAss(opts.watermark.text)}`);
   return header + lines.join('\n') + '\n';
 }
 
