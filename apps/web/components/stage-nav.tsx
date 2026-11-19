@@ -48,6 +48,11 @@ export function StageNav({ projectId, status, episode, active, superadmin }: { p
           <span className="ico">⚿</span>Secret platform
         </Link>
       )}
+      {superadmin && (
+        <Link href="/admin/kredit" className={active === 'admin-kredit' ? 'on' : ''}>
+          <span className="ico">＋</span>Kredit manual
+        </Link>
+      )}
     </nav>
   );
 }

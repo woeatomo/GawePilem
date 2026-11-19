@@ -1647,7 +1647,43 @@ export type Database = {
         Args: { p_amount: number; p_job_id: string; p_now: string; p_user_id: string };
         Returns: undefined;
       };
+      _require_billing_admin: { Args: { p_step_up: boolean }; Returns: undefined };
       _require_secret_admin: { Args: { p_step_up: boolean }; Returns: undefined };
+      admin_find_user: {
+        Args: { p_email: string };
+        Returns: {
+          balance: number;
+          email: string;
+          period_end: string;
+          plan: Database['public']['Enums']['plan_tier'];
+          user_id: string;
+        }[];
+      };
+      admin_manual_credit: {
+        Args: {
+          p_amount_idr: number;
+          p_credits: number;
+          p_email: string;
+          p_months?: number;
+          p_note: string;
+          p_offer_id?: string;
+          p_plan_tier?: Database['public']['Enums']['plan_tier'];
+          p_ref: string;
+        };
+        Returns: Json;
+      };
+      admin_manual_history: {
+        Args: { p_limit?: number };
+        Returns: {
+          actor_email: string;
+          amount_idr: number;
+          at: string;
+          credits: number;
+          note: string;
+          plan: string;
+          user_email: string;
+        }[];
+      };
       can_edit_workspace: { Args: { ws: string }; Returns: boolean };
       charge_and_enqueue: {
         Args: {

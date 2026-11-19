@@ -95,6 +95,7 @@ Kreator bisa review, edit, dan generate ulang di setiap tahap. Hasil tiap tahap 
 - Budget cap opsional per kategori per project.
 - Kredit berlaku 12 bulan sejak top-up (FIFO).
 - Paket & langganan (`PLAN_OFFERS` di `packages/credits/src/plans.ts`, halaman `/paket`): prabayar 1/3 bulan (QRIS/VA/e-wallet tidak auto-debit), kredit paket langsung masuk, aktivasi atomik di RPC `topup_order_paid` (pesanan `kind = 'plan'`), tabel `subscriptions`, cron Worker job menurunkan paket habis ke `free`. Paket lebih rendah tidak bisa dibeli selama paket lebih tinggi aktif.
+- Kredit manual (transfer di luar payment gateway): superadmin di `/admin/kredit`, RPC `admin_manual_credit` dengan sesi user (superadmin + aal2 + 2FA ≤ 15 menit), lewat `topup_orders` (`gateway = 'manual'`) → `topup_order_paid`; bonus tanpa bayar langsung `credit_topup`. Idempotent per referensi, wajib catatan bukti, tercatat di audit log `billing.manual_credit`.
 - Mode AI satu klik (Hemat / Seimbang / Gacor, `AI_PROFILE_META`) mengatur tier + model default semua kategori; estimasi episode memakai `episodeEstimate`.
 
 ## AI gateway

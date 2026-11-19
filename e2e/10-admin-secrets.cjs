@@ -95,6 +95,43 @@ const waitNextWindow = async () => new Promise((r) => setTimeout(r, 30_500 - (Da
   const audit = execFileSync('docker', ['exec', 'supabase_db_atomo-film-studio', 'psql', '-U', 'postgres', '-tAc',
     "select string_agg(action, ',' order by id) from public.audit_log where target_id='FAL_KEY'"], { encoding: 'utf8' }).trim();
   console.log('audit log:', audit);
+
+  // 8. Kredit manual: user biasa tidak bisa membuka; superadmin top-up, aktifkan paket, bonus; klik ganda aman.
+  console.log('user biasa → /admin/kredit status', (await user.p.goto(BASE + '/admin/kredit')).status());
+  const custEmail = `biasa+${stamp}@atomo.test`;
+  await p2.goto(BASE + '/admin/kredit');
+  await p2.fill('input[aria-label="Email customer"]', custEmail);
+  await p2.click('button:has-text("Cari")');
+  await p2.waitForSelector(`text=${custEmail}`);
+  const saldo0 = Number((await p2.locator('.stat:has-text("Saldo") b').textContent()).replace(/\D/g, ''));
+  await p2.fill('#amt', '150000');
+  await p2.fill('#note', 'Transfer BCA 20/11 ref 778899');
+  await p2.click('button:has-text("Tinjau & tambahkan")');
+  await p2.click('button:has-text("Ya, tambahkan")');
+  await p2.waitForSelector('text=Berhasil. Saldo', { timeout: 15000 });
+  await p2.click('.seg button:has-text("Aktifkan paket")');
+  await p2.selectOption('#offer', 'pro-1m');
+  await p2.fill('#note', 'Transfer paket Pro 20/11');
+  await p2.click('button:has-text("Tinjau & tambahkan")');
+  await p2.click('button:has-text("Ya, tambahkan")');
+  await p2.waitForFunction(() => /pro/i.test(document.querySelector('.stat:nth-child(3) b')?.textContent ?? ''), null, { timeout: 15000 });
+  await p2.click('.seg button:has-text("Bonus")');
+  await p2.fill('#cr', '250');
+  await p2.fill('#note', 'Kompensasi render gagal');
+  await p2.click('button:has-text("Tinjau & tambahkan")');
+  await p2.click('button:has-text("Ya, tambahkan")');
+  await p2.waitForSelector('text=Berhasil. Saldo', { timeout: 15000 });
+  await p2.reload();
+  await p2.fill('input[aria-label="Email customer"]', custEmail);
+  await p2.click('button:has-text("Cari")');
+  await p2.waitForSelector(`text=${custEmail}`);
+  const saldo1 = Number((await p2.locator('.stat:has-text("Saldo") b').textContent()).replace(/\D/g, ''));
+  console.log('kredit manual: saldo +', saldo1 - saldo0, '(harap 1500+4990+250=6740) | paket:', (await p2.locator('.stat:has-text("Paket") b').textContent()).trim());
+  console.log('riwayat:', await p2.locator('.qtable tbody tr').count(), 'baris');
+  await p2.screenshot({ path: path.join(__dirname, '.out', 'admin-03-kredit.png'), fullPage: true });
+  const plan = execFileSync('docker', ['exec', 'supabase_db_atomo-film-studio', 'psql', '-U', 'postgres', '-tAc',
+    `select plan from public.profiles where email='${custEmail}'`], { encoding: 'utf8' }).trim();
+  console.log('profil customer di DB:', plan);
   console.log('errors:', errs);
   await b.close();
 })().catch((e) => { console.error('GAGAL', e.message); process.exit(1); });
