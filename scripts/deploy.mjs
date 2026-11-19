@@ -94,7 +94,7 @@ function run(cmd, argv, opts = {}) {
   if (DRY) return void console.log(`    $ ${shown}`);
   try {
     return execFileSync(cmd, argv, { stdio: opts.capture ? ['pipe', 'pipe', 'inherit'] : 'inherit', encoding: 'utf8', env: { ...process.env, CLOUDFLARE_API_TOKEN: cfg.cfToken, CLOUDFLARE_ACCOUNT_ID: cfg.account, ...(opts.env ?? {}) }, cwd: opts.cwd ?? ROOT, input: opts.input });
-  } catch (e) {
+  } catch {
     if (opts.allowFail) return null;
     fail(`Perintah gagal: ${shown}`);
   }
