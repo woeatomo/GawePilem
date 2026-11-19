@@ -36,6 +36,40 @@ importers:
         specifier: ^4.0.0
         version: 4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1))
 
+  apps/jobs:
+    dependencies:
+      '@atomo/ai-gateway':
+        specifier: workspace:*
+        version: link:../../packages/ai-gateway
+      '@atomo/credits':
+        specifier: workspace:*
+        version: link:../../packages/credits
+      '@atomo/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@atomo/prompt-engine':
+        specifier: workspace:*
+        version: link:../../packages/prompt-engine
+      '@atomo/publisher':
+        specifier: workspace:*
+        version: link:../../packages/publisher
+      '@atomo/timeline':
+        specifier: workspace:*
+        version: link:../../packages/timeline
+      '@supabase/supabase-js':
+        specifier: ^2.119.0
+        version: 2.119.0
+      zod:
+        specifier: ^4.1.0
+        version: 4.6.7
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 5.20261119.1
+        version: 5.20261119.1
+      wrangler:
+        specifier: 4.165.0
+        version: 4.165.0(@cloudflare/workers-types@5.20261119.1)(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1)))
+
   apps/render-local:
     dependencies:
       '@atomo/timeline':
@@ -71,7 +105,7 @@ importers:
         version: link:../../packages/timeline
       '@opennextjs/cloudflare':
         specifier: 1.20.17
-        version: 1.20.17(next@16.4.6(@babel/core@7.29.13)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(wrangler@4.165.0(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1))))
+        version: 1.20.17(next@16.4.6(@babel/core@7.29.13)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(wrangler@4.165.0(@cloudflare/workers-types@5.20261119.1)(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1))))
       '@supabase/ssr':
         specifier: ^0.12.7
         version: 0.12.7(@supabase/supabase-js@2.119.0)
@@ -108,7 +142,7 @@ importers:
         version: 4.3.5
       wrangler:
         specifier: 4.165.0
-        version: 4.165.0(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1)))
+        version: 4.165.0(@cloudflare/workers-types@5.20261119.1)(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1)))
 
   apps/worker:
     dependencies:
@@ -158,6 +192,10 @@ importers:
       zod:
         specifier: ^4.1.0
         version: 4.6.7
+    devDependencies:
+      '@atomo/timeline':
+        specifier: workspace:*
+        version: link:../timeline
 
   packages/credits:
     dependencies:
@@ -564,6 +602,9 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
+
+  '@cloudflare/workers-types@5.20261119.1':
+    resolution: {integrity: sha512-TSAVVAUehPUN1idYKaUwJTUhrdKBdlb1jdbA0+OaLQgHHCnOT32oAexu/Aw48CG2NpzSZ7kqi6nIFcO/+t6k5w==}
 
   '@cloudflare/workers-utils@0.55.0':
     resolution: {integrity: sha512-D51hkju35j8pKamLQkD4+L0H830SmX2pwtdnIVX6KX4s+Yz3NlfAh1iWXYmMF770FhLDfYiC6j6ln7zLE8VVcQ==}
@@ -3859,6 +3900,8 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20261118.1':
     optional: true
 
+  '@cloudflare/workers-types@5.20261119.1': {}
+
   '@cloudflare/workers-utils@0.55.0(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1)))':
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
@@ -4304,7 +4347,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.17(next@16.4.6(@babel/core@7.29.13)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(wrangler@4.165.0(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1))))':
+  '@opennextjs/cloudflare@1.20.17(next@16.4.6(@babel/core@7.29.13)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(wrangler@4.165.0(@cloudflare/workers-types@5.20261119.1)(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1))))':
     dependencies:
       '@ast-grep/napi': 0.45.3
       '@dotenvx/dotenvx': 2.38.2
@@ -4317,7 +4360,7 @@ snapshots:
       next: 16.4.6(@babel/core@7.29.13)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       resolve.exports: 2.0.4
       ts-tqdm: 0.8.6
-      wrangler: 4.165.0(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1)))
+      wrangler: 4.165.0(@cloudflare/workers-types@5.20261119.1)(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1)))
       yargs: 18.2.0
     transitivePeerDependencies:
       - diff
@@ -6229,7 +6272,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20261118.1
       '@cloudflare/workerd-windows-64': 1.20261118.1
 
-  wrangler@4.165.0(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1))):
+  wrangler@4.165.0(@cloudflare/workers-types@5.20261119.1)(@types/node@24.19.2)(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.46.0)(tsx@4.23.15)(yaml@2.9.1))):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.5.1
       '@cloudflare/unenv-preset': 2.16.2(unenv@2.0.0-rc.24)(workerd@1.20261118.1)
@@ -6245,6 +6288,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       workerd: 1.20261118.1
     optionalDependencies:
+      '@cloudflare/workers-types': 5.20261119.1
       fsevents: 2.3.3
     transitivePeerDependencies:
       - '@types/node'

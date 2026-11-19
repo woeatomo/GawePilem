@@ -75,19 +75,21 @@ export class MockImageAI implements ImageAI {
   }
 }
 
+/**
+ * Video mock tanpa state (aman di serverless: pengecekan status bisa jalan di instance berbeda).
+ * Selesai ~1,5 detik setelah dibuat; videoUrl "still:" = buat klip gerak kamera dari frame kunci.
+ */
 export class MockVideoAI implements VideoAI {
   readonly provider = 'mock';
-  private polls = new Map<string, number>();
+  constructor(private readonly now: () => number = Date.now, private readonly readyAfterMs = 1500) {}
   async imageToVideo(req: VideoRequest): Promise<VideoJobHandle> {
-    const id = `mock-${Buffer.from(req.imageUrl.slice(-24) + req.prompt).toString('base64url').slice(0, 16)}`;
-    this.polls.set(id, 0);
-    return { provider: this.provider, requestId: id, model: req.model ?? 'mock-video' };
+    const tag = Buffer.from(req.imageUrl.slice(-24) + req.prompt).toString('base64url').slice(0, 12);
+    return { provider: this.provider, requestId: `mock-${this.now()}-${tag}`, model: req.model ?? 'mock-video' };
   }
   async status(handle: VideoJobHandle): Promise<VideoJobStatus> {
-    const n = (this.polls.get(handle.requestId) ?? 0) + 1;
-    this.polls.set(handle.requestId, n);
-    // Worker merender klip diam dari keyframe bila videoUrl berawalan "still:".
-    if (n >= 3) return { state: 'succeeded', progress: 100, videoUrl: `still:${handle.requestId}` };
-    return { state: 'running', progress: n * 33 };
+    const started = Number(handle.requestId.split('-')[1] ?? 0);
+    const elapsed = this.now() - started;
+    if (elapsed >= this.readyAfterMs) return { state: 'succeeded', progress: 100, videoUrl: `still:${handle.requestId}` };
+    return { state: 'running', progress: Math.min(90, Math.round((elapsed / this.readyAfterMs) * 100)) };
   }
 }

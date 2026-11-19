@@ -19,7 +19,8 @@ export class ElevenLabsAdapter implements VoiceAI {
   private readonly f: typeof fetch;
   constructor(private readonly opts: ElevenLabsOptions) {
     if (!opts.apiKey) throw new ProviderError('API key ElevenLabs kosong', this.provider, 'auth');
-    this.f = opts.fetch ?? fetch;
+    // Bungkus fetch global: di Cloudflare Workers, fetch yang dipanggil sebagai method objek lain gagal ("Illegal invocation").
+    this.f = opts.fetch ?? ((input, init) => fetch(input, init));
   }
 
   async synthesize(req: VoiceRequest): Promise<AudioAsset> {

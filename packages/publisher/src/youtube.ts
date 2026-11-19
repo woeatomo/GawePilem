@@ -124,9 +124,12 @@ export function videoResource(m: YouTubeMeta) {
  * Upload resumable. Langkah 1 membuat sesi (dapat Location), langkah 2 PUT seluruh byte.
  * Project Google yang belum lolos audit: YouTube memaksa video menjadi private.
  */
+/** Isi video: byte di memori, atau stream + ukuran (Workers: hindari memuat ±100 MB ke memori). */
+export type VideoBody = Uint8Array | { stream: ReadableStream<Uint8Array>; size: number };
+
 export async function uploadVideo(
   accessToken: string,
-  file: Uint8Array,
+  file: VideoBody,
   meta: YouTubeMeta,
   f: typeof fetch = fetch,
   onProgress?: (pct: number) => void,
@@ -137,7 +140,7 @@ export async function uploadVideo(
       authorization: `Bearer ${accessToken}`,
       'content-type': 'application/json; charset=UTF-8',
       'x-upload-content-type': 'video/mp4',
-      'x-upload-content-length': String(file.byteLength),
+      'x-upload-content-length': String(file instanceof Uint8Array ? file.byteLength : file.size),
     },
     body: JSON.stringify(videoResource(meta)),
   });
@@ -145,7 +148,9 @@ export async function uploadVideo(
   const location = init.headers.get('location');
   if (!location) throw new PublishError('YouTube tidak mengembalikan URL upload', 'unknown');
   onProgress?.(10);
-  const put = await f(location, { method: 'PUT', headers: { 'content-type': 'video/mp4', 'content-length': String(file.byteLength) }, body: new Blob([file as Uint8Array<ArrayBuffer>]) });
+  const size = file instanceof Uint8Array ? file.byteLength : file.size;
+  const body: Blob | ReadableStream<Uint8Array> = file instanceof Uint8Array ? new Blob([file as Uint8Array<ArrayBuffer>]) : file.stream;
+  const put = await f(location, { method: 'PUT', headers: { 'content-type': 'video/mp4', 'content-length': String(size) }, body, ...(file instanceof Uint8Array ? {} : { duplex: 'half' }) } as RequestInit);
   if (!put.ok) throw await errorFor(put);
   onProgress?.(100);
   const v = z.object({ id: z.string(), status: z.object({ privacyStatus: z.string() }).partial().optional() }).parse(await put.json());

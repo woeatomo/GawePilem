@@ -10,6 +10,7 @@ export const PLATFORM_SECRETS = [
   { name: 'OPENCODE_API_KEY', label: 'OpenCode Zen', group: 'AI', help: 'Teks (riset, naskah, shot list)' },
   { name: 'ELEVENLABS_API_KEY', label: 'ElevenLabs', group: 'AI', help: 'Voice over' },
   { name: 'FAL_KEY', label: 'fal.ai', group: 'AI', help: 'Gambar & image-to-video' },
+  { name: 'RENDI_API_KEY', label: 'Rendi (render FFmpeg cloud)', group: 'Render', help: 'Merakit episode MP4 & teaser' },
   { name: 'MIDTRANS_SERVER_KEY', label: 'Midtrans server key', group: 'Pembayaran', help: 'Top-up QRIS, VA, e-wallet' },
   { name: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', group: 'Publish', help: 'Koneksi YouTube' },
   { name: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', group: 'Publish', help: 'Koneksi YouTube' },

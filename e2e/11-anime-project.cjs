@@ -4,7 +4,7 @@ const fs = require('fs');
 (async () => {
   const { b, p, errs } = await open();
   await p.goto(BASE + '/studio');
-  await p.click('button:has-text("Serial anime 16:9")');
+  await p.click('[aria-label="Preset"] button:has-text("Serial anime")');
   await p.fill('#title', 'Penjaga Gerbang Senja');
   await p.fill('#topic', 'Remaja penjaga gerbang dunia roh di kota pelabuhan fiktif. Tiap senja gerbang terbuka dan ia harus memilih siapa yang boleh lewat. Penonton 15-30 tahun.');
   console.log('preset:', await p.inputValue('#format'), await p.inputValue('#genre'), await p.inputValue('#style'), await p.inputValue('#aspect'));

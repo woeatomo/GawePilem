@@ -34,7 +34,8 @@ export class FalAdapter implements ImageAI, VideoAI {
   private readonly f: typeof fetch;
   constructor(private readonly opts: FalOptions) {
     if (!opts.apiKey) throw new ProviderError('API key fal kosong', this.provider, 'auth');
-    this.f = opts.fetch ?? fetch;
+    // Bungkus fetch global: di Cloudflare Workers, fetch yang dipanggil sebagai method objek lain gagal ("Illegal invocation").
+    this.f = opts.fetch ?? ((input, init) => fetch(input, init));
   }
 
   private headers() {

@@ -12,5 +12,8 @@
   "dependencies": {
     "zod": "^4.1.0",
     "@atomo/credits": "workspace:*"
+  },
+  "devDependencies": {
+    "@atomo/timeline": "workspace:*"
   }
 }

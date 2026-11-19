@@ -129,7 +129,8 @@ export class RenderClient {
   constructor(
     private readonly opts: { baseUrl?: string; apiKey: string; fetch?: typeof fetch },
   ) {
-    this.f = opts.fetch ?? fetch;
+    // Bungkus fetch global: di Cloudflare Workers, fetch yang dipanggil sebagai method objek lain gagal ("Illegal invocation").
+    this.f = opts.fetch ?? ((input, init) => fetch(input, init));
   }
   private get base() {
     return (this.opts.baseUrl ?? 'https://api.rendi.dev').replace(/\/$/, '');

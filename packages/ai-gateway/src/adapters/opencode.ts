@@ -60,7 +60,8 @@ export class OpenCodeZenAdapter implements ScriptAI {
   constructor(private readonly opts: OpenCodeOptions) {
     if (!opts.apiKey) throw new ProviderError('API key OpenCode Zen kosong', 'opencode', 'auth');
     this.baseUrl = (opts.baseUrl ?? OPENCODE_ZEN_BASE_URL).replace(/\/$/, '');
-    this.f = opts.fetch ?? fetch;
+    // Bungkus fetch global: di Cloudflare Workers, fetch yang dipanggil sebagai method objek lain gagal ("Illegal invocation").
+    this.f = opts.fetch ?? ((input, init) => fetch(input, init));
   }
 
   endpointFor(model: string): TextEndpoint {
