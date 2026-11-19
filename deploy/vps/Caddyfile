@@ -1,0 +1,10 @@
+# HTTPS otomatis (Let's Encrypt) untuk endpoint worker. Hanya /enqueue dan /health yang diteruskan.
+{$WORKER_DOMAIN} {
+	@allowed path /enqueue /health
+	handle @allowed {
+		reverse_proxy worker:8787
+	}
+	handle {
+		respond 404
+	}
+}
