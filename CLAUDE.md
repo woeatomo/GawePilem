@@ -212,6 +212,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [x] Timeline JSON + rakit otomatis + render FFmpeg + export MP4
 - [x] Publish manual ke YouTube
 - [x] Uji end-to-end dengan Supabase lokal (Docker) + mode mock: `pnpm test:e2e` (daftar → render MP4 → edit AI)
+- [x] Deploy pilot live (paket gratis): web https://pilem.atomos.workers.dev (GitHub Actions `deploy-web.yml`), Worker job atomo-jobs.atomos.workers.dev, Supabase Singapore; `scripts/deploy.mjs`
 - [ ] Uji dengan key provider asli (OpenCode Zen, fal, ElevenLabs, YouTube, Midtrans)
 - [ ] Verifikasi endpoint OpenCode Zen per model (`GET /models`), ToS reseller, dan field `status.containsSyntheticMedia` YouTube di docs terbaru
 
