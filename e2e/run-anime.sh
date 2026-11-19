@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 rm -f .out/state.json
-for s in 01-signup 11-anime-project 04-karakter 05-naskah 06-storyboard 07-visual 08-audio-editor 12-teaser 14-paket-promo; do
+for s in 01-signup 11-anime-project 04-karakter 05-naskah 06-storyboard 07-visual 08-audio-editor 12-teaser 14-paket-promo 15-analitik-jadwal; do
   echo "▶ $s"
   node "$s.cjs"
 done

@@ -31,6 +31,12 @@ export async function POST(req: Request) {
   if (!p.success) return jsonError(400, 'bad_request', p.error.issues[0]?.message ?? 'Body tidak valid');
   const d = p.data;
   if (d.publishAt && !['pro', 'studio'].includes(s.profile.plan)) return jsonError(403, 'plan', 'Publish terjadwal butuh paket Pro.');
+  if (d.publishAt) {
+    const at = new Date(d.publishAt).getTime();
+    // Upload & pemrosesan YouTube butuh waktu; YouTube juga menolak publishAt yang sudah lewat.
+    if (at < Date.now() + 15 * 60_000) return jsonError(400, 'bad_schedule', 'Jadwal tayang minimal 15 menit dari sekarang.');
+    if (at > Date.now() + 180 * 86_400_000) return jsonError(400, 'bad_schedule', 'Jadwal tayang maksimal 6 bulan ke depan.');
+  }
 
   const { data: r } = await s.db.from('renders').select('id, status, url, episode_id, workspace_id, aspect_ratio, duration_sec').eq('id', d.renderId).maybeSingle();
   if (!r || r.status !== 'ready') return jsonError(400, 'render', 'Render belum siap.');

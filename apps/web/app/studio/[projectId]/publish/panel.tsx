@@ -6,9 +6,10 @@ import type { PromoKit, PublishMeta } from '@atomo/prompt-engine';
 import { PromoCard, type ShortCandidate } from './promo';
 import { AIButton } from '@/components/use-ai';
 import { useToast } from '@/components/ui';
+import { formatWib, nextSlotWib, toLocalInput, WEEKDAYS } from '@/lib/schedule';
 
 interface Acc { id: string; platform: string; name: string; avatar: string | null; status: string; audited: boolean; error: string | null }
-interface Pub { id: string; variant: string; status: string; videoId: string | null; privacy: string; error: string | null; at: string; title: string }
+interface Pub { id: string; variant: string; status: string; videoId: string | null; privacy: string; error: string | null; at: string; title: string; scheduledAt: string | null }
 
 const STATUS: Record<string, [string, string]> = {
   queued: ['Antre', 'info'], uploading: ['Mengunggah', 'acc'], processing: ['Diproses YouTube', 'acc'], published: ['Terunggah', 'good'], failed: ['Gagal', 'crit'], canceled: ['Dibatalkan', ''],
@@ -31,6 +32,10 @@ export function PublishPanel(p: {
   const [tags, setTags] = useState('');
   const [privacy, setPrivacy] = useState<'private' | 'unlisted' | 'public'>('private');
   const [busy, setBusy] = useState(false);
+  const [when, setWhen] = useState<'now' | 'schedule'>('now');
+  const [at, setAt] = useState('');
+  const canSchedule = p.plan === 'pro' || p.plan === 'studio';
+  const atDate = at ? new Date(at) : null;
   const toast = useToast();
   const router = useRouter();
   useEffect(() => {
@@ -46,12 +51,16 @@ export function PublishPanel(p: {
     const res = await fetch('/api/publish', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ renderId: render.id, socialAccountId: acc, title, description: desc, tags: tags.split(/[,\s]+/).filter(Boolean), privacy, idempotencyKey: crypto.randomUUID().replace(/-/g, '') }),
+      body: JSON.stringify({
+        renderId: render.id, socialAccountId: acc, title, description: desc, tags: tags.split(/[,\s]+/).filter(Boolean), privacy,
+        ...(when === 'schedule' && atDate ? { publishAt: atDate.toISOString() } : {}),
+        idempotencyKey: crypto.randomUUID().replace(/-/g, ''),
+      }),
     });
     setBusy(false);
     const j = (await res.json().catch(() => ({}))) as { error?: { message: string } };
     if (!res.ok) toast(j.error?.message ?? 'Gagal', 'err');
-    else toast('Masuk antrean upload YouTube', 'info');
+    else toast(when === 'schedule' && atDate ? `Diunggah sekarang, tayang ${formatWib(atDate)}` : 'Masuk antrean upload YouTube', 'info');
     router.refresh();
   }
 
@@ -149,13 +158,35 @@ export function PublishPanel(p: {
                 <input id="tg" type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="horor, microdrama, kamar7" />
               </div>
               <div>
-                <label className="lbl">Visibilitas</label>
+                <label className="lbl">Waktu tayang</label>
                 <div className="seg">
-                  {(['private', 'unlisted', 'public'] as const).map((v) => (
-                    <button key={v} className={privacy === v ? 'on' : ''} onClick={() => setPrivacy(v)}>{{ private: 'Private', unlisted: 'Unlisted', public: 'Publik' }[v]}</button>
-                  ))}
+                  <button className={when === 'now' ? 'on' : ''} onClick={() => setWhen('now')}>Sekarang</button>
+                  <button className={when === 'schedule' ? 'on' : ''} disabled={!canSchedule} title={canSchedule ? '' : 'Butuh paket Pro'} onClick={() => setWhen('schedule')}>Jadwalkan{canSchedule ? '' : ' (Pro)'}</button>
                 </div>
+                {!canSchedule && <p className="small faint" style={{ marginTop: 4 }}>Rilis terjadwal tersedia di <a href="/paket">paket Pro</a>.</p>}
+                {when === 'schedule' && (
+                  <div className="stack-sm" style={{ marginTop: 8 }}>
+                    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                      {([[4, 19], [5, 19], [6, 19], [0, 10]] as const).map(([wd, h]) => (
+                        <button key={`${wd}-${h}`} className="btn sm ghost" onClick={() => setAt(toLocalInput(nextSlotWib(wd, h)))}>{WEEKDAYS[wd]} {h}.00</button>
+                      ))}
+                    </div>
+                    <input type="datetime-local" aria-label="Jadwal tayang" value={at} onChange={(e) => setAt(e.target.value)} />
+                    {atDate && <p className="small muted">Video diunggah sekarang sebagai private, lalu YouTube menayangkannya publik pada {formatWib(atDate)}. Rilis di hari & jam yang sama tiap minggu membuat penonton terbiasa menunggu.</p>}
+                    {account && !account.audited && <p className="small" style={{ color: 'var(--warn)' }}>Selama aplikasi belum lolos audit Google, video terkunci private dan jadwal tayang publik tidak berjalan.</p>}
+                  </div>
+                )}
               </div>
+              {when === 'now' && (
+                <div>
+                  <label className="lbl">Visibilitas</label>
+                  <div className="seg">
+                    {(['private', 'unlisted', 'public'] as const).map((v) => (
+                      <button key={v} className={privacy === v ? 'on' : ''} onClick={() => setPrivacy(v)}>{{ private: 'Private', unlisted: 'Unlisted', public: 'Publik' }[v]}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="lbl" htmlFor="ds">Deskripsi</label>
@@ -167,7 +198,7 @@ export function PublishPanel(p: {
               <span className="pill acc">Label konten AI: aktif (wajib)</span>
               {p.madeForKids && <span className="pill info" title="Aturan COPPA: komentar & iklan personalisasi dinonaktifkan YouTube">Dibuat untuk anak: aktif (wajib)</span>}
             </span>
-            <button className="btn primary" disabled={busy || !title.trim() || !acc} onClick={publish}>{busy ? 'Mengirim…' : 'Publish ke YouTube'}</button>
+            <button className="btn primary" disabled={busy || !title.trim() || !acc || (when === 'schedule' && !atDate)} onClick={publish}>{busy ? 'Mengirim…' : when === 'schedule' ? 'Unggah & jadwalkan' : 'Publish ke YouTube'}</button>
           </div>
         </section>
       )}
@@ -184,7 +215,7 @@ export function PublishPanel(p: {
                     <td className="small muted">{new Date(x.at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td>
                     <td>{x.title}</td>
                     <td><span className="pill">{x.variant}</span> <span className="pill">{x.privacy}</span></td>
-                    <td><span className={`pill ${cls}`} title={x.error ?? ''}>{label}</span>{x.error && <div className="small" style={{ color: 'var(--crit)' }}>{x.error}</div>}</td>
+                    <td><span className={`pill ${cls}`} title={x.error ?? ''}>{label}</span>{x.scheduledAt && new Date(x.scheduledAt).getTime() > Date.now() && <div className="small muted">tayang {formatWib(x.scheduledAt)}</div>}{x.error && <div className="small" style={{ color: 'var(--crit)' }}>{x.error}</div>}</td>
                     <td>{x.videoId && <a className="btn sm ghost" href={`https://youtu.be/${x.videoId}`} target="_blank" rel="noreferrer">Buka</a>}</td>
                   </tr>
                 );

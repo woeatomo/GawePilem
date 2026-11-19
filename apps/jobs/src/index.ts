@@ -6,6 +6,7 @@ import { charref, clipPoll, clips, keyframes, voiceOver } from './handlers/media
 import { ffmpegPoll, render } from './handlers/render';
 import { publish } from './handlers/publish';
 import { expireCredits, expireSubscriptions, purgeWorkspaceMedia } from './handlers/maintenance';
+import { scheduleMetrics, syncMetrics } from './handlers/metrics';
 import { serveMedia } from './storage';
 
 function tokenOk(header: string | null, token: string): boolean {
@@ -36,6 +37,8 @@ async function handle(env: Env, msg: JobMessage) {
       return ffmpegPoll(ctx, msg);
     case 'publish':
       return publish(ctx, msg);
+    case 'metrics':
+      return syncMetrics(ctx, msg);
     case 'purge':
       return purgeWorkspaceMedia(ctx, msg.workspaceId);
     case 'expire':
@@ -95,6 +98,6 @@ export default {
 
   async scheduled(c, env, ctx): Promise<void> {
     const x = makeCtx(env);
-    ctx.waitUntil(c.cron === '0 19 * * *' ? expireCredits(x) : expireSubscriptions(x));
+    ctx.waitUntil(c.cron === '0 19 * * *' ? expireCredits(x) : Promise.all([expireSubscriptions(x), scheduleMetrics(x)]));
   },
 } satisfies ExportedHandler<Env, JobMessage>;

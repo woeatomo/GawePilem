@@ -50,4 +50,37 @@ describe('YouTube', () => {
     expect(e).toBeInstanceOf(PublishError);
     expect(e).toMatchObject({ code: 'quota', retryable: false });
   });
+
+  it('statistik video dipecah per 50 id & angka string jadi number', async () => {
+    const urls: string[] = [];
+    const f = vi.fn(async (u: string | URL | Request) => {
+      urls.push(String(u));
+      const ids = new URL(String(u)).searchParams.get('id')!.split(',');
+      return json({ items: ids.map((id) => ({ id, statistics: { viewCount: '120', likeCount: '7' }, status: { privacyStatus: 'public' } })) });
+    }) as unknown as typeof fetch;
+    const ids = Array.from({ length: 60 }, (_, i) => `v${i}`);
+    const r = await youtube.videoStats('tok', ids, f);
+    expect(urls).toHaveLength(2);
+    expect(r.v59).toEqual({ views: 120, likes: 7, comments: 0, privacy: 'public' });
+  });
+
+  it('analytics: kolom dipetakan per nama & filter video dikirim', async () => {
+    let seen = '';
+    const f = vi.fn(async (u: string | URL | Request) => {
+      seen = String(u);
+      return json({
+        columnHeaders: [{ name: 'video' }, { name: 'estimatedMinutesWatched' }, { name: 'averageViewDuration' }, { name: 'averageViewPercentage' }, { name: 'subscribersGained' }],
+        rows: [['abc', 340, 95, 41.27, 3]],
+      });
+    }) as unknown as typeof fetch;
+    const r = await youtube.videoAnalytics('tok', ['abc'], '2026-01-01', '2026-11-19', f);
+    expect(new URL(seen).searchParams.get('filters')).toBe('video==abc');
+    expect(new URL(seen).searchParams.get('ids')).toBe('channel==MINE');
+    expect(r.abc).toEqual({ minutesWatched: 340, avgViewDurationSec: 95, avgViewPct: 41.3, subsGained: 3 });
+  });
+
+  it('analytics tanpa scope → error bad_request (403), bukan auth', async () => {
+    const f = vi.fn(async () => new Response('{"error":{"message":"Insufficient Permission"}}', { status: 403 })) as unknown as typeof fetch;
+    await expect(youtube.channelStats('tok', f)).rejects.toMatchObject({ code: 'bad_request', status: 403 });
+  });
 });

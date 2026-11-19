@@ -873,6 +873,8 @@ export type Database = {
           error: string | null;
           id: string;
           metadata: NonNullable<Json>;
+          metrics: Json | null;
+          metrics_at: string | null;
           platform: Database['public']['Enums']['platform'];
           platform_video_id: string | null;
           privacy: string;
@@ -893,6 +895,8 @@ export type Database = {
           error?: string | null;
           id?: string;
           metadata?: NonNullable<Json>;
+          metrics?: Json | null;
+          metrics_at?: string | null;
           platform: Database['public']['Enums']['platform'];
           platform_video_id?: string | null;
           privacy?: string;
@@ -912,6 +916,8 @@ export type Database = {
           error?: string | null;
           id?: string;
           metadata?: NonNullable<Json>;
+          metrics?: Json | null;
+          metrics_at?: string | null;
           platform?: Database['public']['Enums']['platform'];
           platform_video_id?: string | null;
           privacy?: string;
@@ -1342,6 +1348,8 @@ export type Database = {
           encrypted_tokens: string;
           id: string;
           last_error: string | null;
+          metrics: Json | null;
+          metrics_at: string | null;
           platform: Database['public']['Enums']['platform'];
           scopes: string[];
           status: Database['public']['Enums']['connection_status'];
@@ -1360,6 +1368,8 @@ export type Database = {
           encrypted_tokens: string;
           id?: string;
           last_error?: string | null;
+          metrics?: Json | null;
+          metrics_at?: string | null;
           platform: Database['public']['Enums']['platform'];
           scopes?: string[];
           status?: Database['public']['Enums']['connection_status'];
@@ -1377,6 +1387,8 @@ export type Database = {
           encrypted_tokens?: string;
           id?: string;
           last_error?: string | null;
+          metrics?: Json | null;
+          metrics_at?: string | null;
           platform?: Database['public']['Enums']['platform'];
           scopes?: string[];
           status?: Database['public']['Enums']['connection_status'];

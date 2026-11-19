@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-export const YOUTUBE_SCOPES = ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly'];
+export const YOUTUBE_SCOPES = [
+  'https://www.googleapis.com/auth/youtube.upload',
+  'https://www.googleapis.com/auth/youtube.readonly',
+  // Analitik ringan: jam tonton, durasi & persentase tonton (retensi), subscriber dari video.
+  'https://www.googleapis.com/auth/yt-analytics.readonly',
+];
+export const ANALYTICS_SCOPE = 'https://www.googleapis.com/auth/yt-analytics.readonly';
 /** Kuota default videos.insert per project Google Cloud per hari. */
 export const YOUTUBE_DEFAULT_DAILY_UPLOADS = 100;
 
@@ -155,4 +161,87 @@ export async function uploadVideo(
   onProgress?.(100);
   const v = z.object({ id: z.string(), status: z.object({ privacyStatus: z.string() }).partial().optional() }).parse(await put.json());
   return { videoId: v.id, privacy: v.status?.privacyStatus ?? meta.privacy };
+}
+
+// ---------------------------------------------------------------------------
+// Statistik & analitik (dibaca berkala oleh Worker job).
+// ---------------------------------------------------------------------------
+
+const num = z.coerce.number().int().nonnegative().catch(0);
+
+const videosRes = z.object({
+  items: z.array(z.object({ id: z.string(), statistics: z.object({ viewCount: num, likeCount: num, commentCount: num }).partial().default({}), status: z.object({ privacyStatus: z.string() }).partial().optional() })).default([]),
+});
+
+export interface VideoStats { views: number; likes: number; comments: number; privacy: string | null }
+
+/** Statistik publik per video (maks 50 id per panggilan, dipecah otomatis). */
+export async function videoStats(accessToken: string, ids: string[], f: typeof fetch = fetch): Promise<Record<string, VideoStats>> {
+  const out: Record<string, VideoStats> = {};
+  for (let i = 0; i < ids.length; i += 50) {
+    const part = ids.slice(i, i + 50);
+    const res = await f(`https://www.googleapis.com/youtube/v3/videos?part=statistics,status&id=${part.map(encodeURIComponent).join(',')}`, { headers: { authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) throw await errorFor(res);
+    for (const v of videosRes.parse(await res.json()).items) {
+      out[v.id] = { views: v.statistics.viewCount ?? 0, likes: v.statistics.likeCount ?? 0, comments: v.statistics.commentCount ?? 0, privacy: v.status?.privacyStatus ?? null };
+    }
+  }
+  return out;
+}
+
+const channelStatsRes = z.object({
+  items: z.array(z.object({ statistics: z.object({ subscriberCount: num, viewCount: num, videoCount: num, hiddenSubscriberCount: z.boolean().optional() }).partial() })).default([]),
+});
+
+export async function channelStats(accessToken: string, f: typeof fetch = fetch): Promise<{ subscribers: number; views: number; videos: number }> {
+  const res = await f('https://www.googleapis.com/youtube/v3/channels?part=statistics&mine=true', { headers: { authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) throw await errorFor(res);
+  const s = channelStatsRes.parse(await res.json()).items[0]?.statistics ?? {};
+  return { subscribers: s.subscriberCount ?? 0, views: s.viewCount ?? 0, videos: s.videoCount ?? 0 };
+}
+
+const reportRes = z.object({
+  columnHeaders: z.array(z.object({ name: z.string() })).default([]),
+  rows: z.array(z.array(z.union([z.string(), z.number()]))).default([]),
+});
+
+/** Query YouTube Analytics API v2 (ids=channel==MINE). Baris dikembalikan sebagai objek per nama kolom. */
+export async function analyticsReport(
+  accessToken: string,
+  q: { startDate: string; endDate: string; metrics: string[]; dimensions?: string[]; filters?: string; maxResults?: number },
+  f: typeof fetch = fetch,
+): Promise<Record<string, string | number>[]> {
+  const u = new URL('https://youtubeanalytics.googleapis.com/v2/reports');
+  u.searchParams.set('ids', 'channel==MINE');
+  u.searchParams.set('startDate', q.startDate);
+  u.searchParams.set('endDate', q.endDate);
+  u.searchParams.set('metrics', q.metrics.join(','));
+  if (q.dimensions?.length) u.searchParams.set('dimensions', q.dimensions.join(','));
+  if (q.filters) u.searchParams.set('filters', q.filters);
+  if (q.maxResults) u.searchParams.set('maxResults', String(q.maxResults));
+  const res = await f(u.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) throw await errorFor(res);
+  const r = reportRes.parse(await res.json());
+  return r.rows.map((row) => Object.fromEntries(r.columnHeaders.map((h, i) => [h.name, row[i]!])));
+}
+
+export interface VideoAnalytics { minutesWatched: number; avgViewDurationSec: number; avgViewPct: number; subsGained: number }
+
+/** Jam tonton & retensi per video sejak tanggal tertentu (filter video maks 50 id per panggilan). */
+export async function videoAnalytics(accessToken: string, ids: string[], since: string, until: string, f: typeof fetch = fetch): Promise<Record<string, VideoAnalytics>> {
+  const out: Record<string, VideoAnalytics> = {};
+  for (let i = 0; i < ids.length; i += 50) {
+    const part = ids.slice(i, i + 50);
+    const rows = await analyticsReport(accessToken, {
+      startDate: since, endDate: until, dimensions: ['video'], filters: `video==${part.join(',')}`, maxResults: 50,
+      metrics: ['estimatedMinutesWatched', 'averageViewDuration', 'averageViewPercentage', 'subscribersGained'],
+    }, f);
+    for (const r of rows) {
+      out[String(r.video)] = {
+        minutesWatched: Number(r.estimatedMinutesWatched ?? 0), avgViewDurationSec: Number(r.averageViewDuration ?? 0),
+        avgViewPct: Math.round(Number(r.averageViewPercentage ?? 0) * 10) / 10, subsGained: Number(r.subscribersGained ?? 0),
+      };
+    }
+  }
+  return out;
 }

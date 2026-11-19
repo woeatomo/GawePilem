@@ -12,6 +12,6 @@ export async function GET(req: Request) {
   if (!c) return new Response('Integrasi YouTube belum dikonfigurasi (GOOGLE_CLIENT_ID/SECRET).', { status: 503 });
   const back = new URL(req.url).searchParams.get('back') ?? '/studio';
   const state = randomBytes(24).toString('base64url');
-  (await cookies()).set('yt_oauth', JSON.stringify({ state, back: back.startsWith('/') ? back : '/studio' }), { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 600, path: '/api/oauth/youtube' });
+  (await cookies()).set('yt_oauth', JSON.stringify({ state, back: /^\/(?![/\\])/.test(back) ? back : '/studio' }), { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 600, path: '/api/oauth/youtube' });
   return NextResponse.redirect(youtube.authUrl(c, state));
 }

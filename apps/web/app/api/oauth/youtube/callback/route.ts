@@ -18,7 +18,8 @@ export async function GET(req: Request) {
   const raw = jar.get('yt_oauth')?.value;
   jar.delete({ name: 'yt_oauth', path: '/api/oauth/youtube' });
   const saved = raw ? (JSON.parse(raw) as { state: string; back: string }) : null;
-  const back = new URL(saved?.back ?? '/studio', url.origin);
+  let back = new URL(saved?.back ?? '/studio', url.origin);
+  if (back.origin !== url.origin) back = new URL('/studio', url.origin); // cegah open redirect
   if (!s || !c || !saved || saved.state !== url.searchParams.get('state')) {
     back.searchParams.set('yt', 'invalid_state');
     return NextResponse.redirect(back);

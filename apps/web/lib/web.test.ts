@@ -5,6 +5,8 @@ import { timelineSchema, type Timeline } from '@atomo/timeline';
 import { quantities, actionParams } from './ai/actions';
 import { dialogLines, quantityContext } from './ai/context';
 import { assignLines, buildTimeline } from './assemble';
+import { channelMetricsSchema, insights, videoMetricsSchema, yppProgress } from './analytics';
+import { formatWib, nextSlotWib } from './schedule';
 import { chapters, chapterText, formatTs, sceneSpans, shortRange } from './promo';
 import type { ProjectBundle } from './project';
 import type { Row } from '@atomo/db';
@@ -105,5 +107,37 @@ describe('kit promosi: chapter & rentang Shorts dari timeline', () => {
     expect(shortRange(spans[3]!, 89)).toEqual({ start: 49, end: 89 });
     expect(shortRange(spans[1]!, 89)).toEqual({ start: 14, end: 29 });
     expect(formatTs(3725)).toBe('1:02:05');
+  });
+});
+
+describe('analitik: progres YPP & insight', () => {
+  it('progres YPP dibatasi 100% dan jam tonton opsional', () => {
+    const p = yppProgress(channelMetricsSchema.parse({ subscribers: 1500, watchMinutes365: 60_000 }));
+    expect(p.subscribers.pct).toBe(100);
+    expect(p.watchHours).toEqual({ value: 1000, target: 4000, pct: 25 });
+    expect(yppProgress(channelMetricsSchema.parse({ subscribers: 10 })).watchHours).toBeNull();
+  });
+  it('insight retensi & perbandingan median per varian', () => {
+    const old = new Date(Date.now() - 7 * 86_400_000).toISOString();
+    const v = (id: string, variant: string, views: number, avgViewPct?: number) => ({ id, variant, publishedAt: old, m: videoMetricsSchema.parse({ views, likes: 50, comments: 10, avgViewPct }) });
+    const r = insights([v('a', 'youtube', 1000, 20), v('b', 'youtube', 300, 55), v('c', 'youtube', 100), v('s', 'shorts', 500, 92)]);
+    expect(r.a!.map((x) => x.text).join(' ')).toMatch(/30 detik pertama/);
+    expect(r.a!.some((x) => /2× rata-rata/.test(x.text))).toBe(true);
+    expect(r.b!.some((x) => /Retensi bagus/.test(x.text))).toBe(true);
+    expect(r.c!.some((x) => /Di bawah rata-rata/.test(x.text))).toBe(true);
+    expect(r.s!.some((x) => /Shorts lagi/.test(x.text))).toBe(true);
+  });
+});
+
+describe('jadwal rilis WIB', () => {
+  it('slot Kamis 19.00 WIB berikutnya, melompati slot yang terlalu dekat', () => {
+    // Kamis 19 Nov 2026 10.00 WIB = 03.00 UTC
+    const now = Date.UTC(2026, 10, 19, 3, 0);
+    expect(nextSlotWib(4, 19, now).toISOString()).toBe('2026-11-19T12:00:00.000Z');
+    // Kamis 18.30 WIB → slot hari ini kurang dari 60 menit → minggu depan
+    expect(nextSlotWib(4, 19, Date.UTC(2026, 10, 19, 11, 30)).toISOString()).toBe('2026-11-26T12:00:00.000Z');
+    // Sabtu 20.00 WIB dari Kamis
+    expect(nextSlotWib(6, 20, now).toISOString()).toBe('2026-11-21T13:00:00.000Z');
+    expect(formatWib('2026-11-19T12:00:00Z')).toMatch(/19\.00 WIB|19:00 WIB/);
   });
 });

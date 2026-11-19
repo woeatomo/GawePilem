@@ -16,6 +16,8 @@ export const mediaJobSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('render'), jobId: id, workspaceId: uuid, renderId: uuid }),
   z.object({ kind: z.literal('publish'), jobId: id, workspaceId: uuid, publicationId: uuid }),
   z.object({ kind: z.literal('purge'), jobId: id, workspaceId: uuid }),
+  /** Sinkron statistik & analitik YouTube satu akun (tanpa biaya kredit). */
+  z.object({ kind: z.literal('metrics'), jobId: id, workspaceId: uuid, socialAccountId: uuid }),
   z.object({ kind: z.literal('expire'), jobId: id, workspaceId: z.string() }),
 ]);
 export type MediaJobData = z.infer<typeof mediaJobSchema>;

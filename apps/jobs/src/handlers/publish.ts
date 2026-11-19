@@ -1,8 +1,9 @@
-import { decryptSecret, encryptSecret, ProviderError } from '@atomo/ai-gateway';
+import { ProviderError } from '@atomo/ai-gateway';
 import type { MediaJobData } from '@atomo/db';
-import { PublishError, youtube, type Tokens } from '@atomo/publisher';
+import { PublishError, youtube } from '@atomo/publisher';
 import type { Ctx } from '../ctx';
 import { beginJob, failJob, progress, succeedJob } from '../job';
+import { youtubeAccess } from './youtube-auth';
 
 /** Upload ke YouTube dengan stream dari R2. Idempotent: publikasi ber-platform_video_id dilewati. */
 export async function publish(ctx: Ctx, d: Extract<MediaJobData, { kind: 'publish' }>) {
@@ -12,8 +13,6 @@ export async function publish(ctx: Ctx, d: Extract<MediaJobData, { kind: 'publis
   try {
     if (!pub) throw new ProviderError('Publikasi tidak ditemukan', 'youtube', 'bad_request');
     if (pub.platform_video_id) return void (await succeedJob(ctx, job, { videoId: pub.platform_video_id, skipped: true }));
-    const [clientId, clientSecret] = await Promise.all([ctx.secrets.get('GOOGLE_CLIENT_ID'), ctx.secrets.get('GOOGLE_CLIENT_SECRET')]);
-    if (!clientId || !clientSecret) throw new ProviderError('Integrasi YouTube belum dikonfigurasi', 'youtube', 'auth');
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const { count } = await ctx.admin.from('publications').select('id', { count: 'exact', head: true }).eq('platform', 'youtube').not('platform_video_id', 'is', null).gte('published_at', today.toISOString());
@@ -21,14 +20,8 @@ export async function publish(ctx: Ctx, d: Extract<MediaJobData, { kind: 'publis
 
     const { data: acc } = await ctx.admin.from('social_accounts').select('*').eq('id', pub.social_account_id).single();
     if (!acc) throw new ProviderError('Akun YouTube tidak ditemukan', 'youtube', 'bad_request');
-    const aad = `${acc.workspace_id}:youtube:${acc.channel_id}`;
-    let tokens = JSON.parse(decryptSecret(acc.encrypted_tokens, ctx.env.ENCRYPTION_KEY, aad)) as Tokens;
-    const client = { clientId, clientSecret, redirectUri: `${ctx.env.APP_URL}/api/oauth/youtube/callback` };
     try {
-      if (youtube.needsRefresh(tokens)) {
-        tokens = await youtube.refreshTokens(client, tokens);
-        await ctx.admin.from('social_accounts').update({ encrypted_tokens: encryptSecret(JSON.stringify(tokens), ctx.env.ENCRYPTION_KEY, aad), token_expires_at: new Date(tokens.expiresAt).toISOString(), status: 'active', last_error: null }).eq('id', acc.id);
-      }
+      const tokens = await youtubeAccess(ctx, acc);
       const { data: r } = await ctx.admin.from('renders').select('url').eq('id', pub.render_id).single();
       if (!r?.url) throw new ProviderError('File render tidak ada', 'youtube', 'bad_request');
       await ctx.admin.from('publications').update({ status: 'uploading', attempts: pub.attempts + 1, error: null }).eq('id', pub.id);

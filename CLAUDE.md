@@ -164,6 +164,8 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - YouTube: kuota upload per project dibatasi per hari. Antrekan upload dan tampilkan sisa kuota. Project API yang belum lolos audit Google mengunggah video sebagai private.
 - TikTok: klien yang belum diaudit hanya bisa posting private dan dibatasi jumlah user per 24 jam. Tampilkan status ini dengan jelas di UI.
 - Simpan setiap upload di tabel `publications` beserta `platform_video_id`, status, dan error.
+- Publish terjadwal memakai `status.publishAt` YouTube (upload langsung sebagai private, tayang publik pada jadwal); waktu 15 menit–6 bulan ke depan. Proyek Google yang belum diaudit: video terkunci private, jadwal publik tidak berjalan (tampilkan peringatan).
+- Analitik: Worker job `metrics` (cron + tombol "Perbarui sekarang", 1×/10 menit) menyimpan snapshot di `publications.metrics` dan `social_accounts.metrics`. Scope `yt-analytics.readonly`; akun lama perlu hubungkan ulang. CTR tayangan tidak tersedia lewat API: tautkan ke YouTube Studio.
 - Kit promosi per episode (aksi `promo`, disimpan di `episodes.promo`): varian judul A/B, teks thumbnail, deskripsi, tag, komentar pin, posting komunitas, kandidat Shorts. Chapter dan rentang Shorts dihitung dari timeline terbaru (`apps/web/lib/promo.ts`). Tidak pernah ada fitur beli views/engagement.
 
 ## Skema database (ringkas)
@@ -227,7 +229,8 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 ### Fase 3: Launch
 - [x] Episode panjang (maks 20 menit): shot list per scene, batch tulis/pecah scene, hybrid gerak kamera, render per segmen + gabung tanpa re-encode
 - [x] Halaman paket & langganan (prabayar), mode AI Hemat/Seimbang/Gacor, kit promosi + Shorts dari kandidat AI
-- [ ] Publish terjadwal, cross-post, analitik ringan (CTR & retensi dari YouTube Analytics)
+- [x] Publish terjadwal (YouTube `publishAt`, Pro+, slot cepat WIB) + analitik ringan `/analitik` (statistik video & channel, retensi & jam tonton via YouTube Analytics, progres syarat monetisasi, saran per video; sinkron tiap 6 jam di Worker job)
+- [ ] Cross-post (menunggu integrasi TikTok)
 
 ### Fase 4: Scale
 - [ ] Series autopilot, format 16:9 panjang dengan reframe, marketplace template, workspace tim
