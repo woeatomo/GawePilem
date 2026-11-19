@@ -40,6 +40,10 @@ SUPERADMIN_EMAIL=kamu@contoh.id pnpm deploy:prod -- --only superadmin
 
 Mulai dengan paket gratis: tambahkan `FREE_TIER=1`. Skrip lalu menghapus `limits.cpu_ms` (tidak diterima Workers Free) dan membatasi render ke paket Rendi Free (perintah ≤ 60 detik, 4 vCPU, segmen 30 detik). Batas yang perlu diawasi: Workers Free 10 ms CPU per request (halaman berat bisa kena Error 1102), Queues 10.000 operasi/hari, Rendi Free 50 GB proses/bulan, Supabase Free berhenti otomatis setelah 1 minggu tanpa aktivitas.
 
+**Tanpa domain sendiri (workers.dev):** isi `WORKERS_SUBDOMAIN` (mis. `atomos`) dan `WEB_WORKER` (mis. `pilem`) sebagai ganti `DOMAIN`. Web tampil di `<WEB_WORKER>.<subdomain>.workers.dev`, Worker job di `atomo-jobs.<subdomain>.workers.dev`, dan media disajikan Worker job lewat `/media`.
+
+**Deploy web lewat GitHub Actions** (`.github/workflows/deploy-web.yml`): dipakai bila upload aset tidak bisa dari mesin deploy (mis. sesi di balik proxy yang menimpa header otorisasi). Isi secret repo `CLOUDFLARE_API_TOKEN` (template "Edit Cloudflare Workers" cukup), lalu jalankan workflow secara manual atau push commit berisi `[deploy-web]`. Rahasia Worker web dipasang terpisah: `pnpm deploy:prod -- --only web --secrets-only`.
+
 Token Cloudflare: template **Edit Cloudflare Workers**, lalu tambahkan izin **Workers R2 Storage: Edit** dan **Queues: Edit**, serta **DNS: Edit** pada zona domain. `ENCRYPTION_KEY` dan `WORKER_TOKEN` dibuat otomatis sekali di `.deploy/secrets.env` (gitignored): simpan salinannya di password manager.
 
 Langkah manual di bawah tetap berlaku bila ingin deploy tanpa skrip.
