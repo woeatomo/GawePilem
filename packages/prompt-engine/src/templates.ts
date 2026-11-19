@@ -117,7 +117,7 @@ Aturan:
 - camera: gerakan kamera singkat (statis, dolly in, handheld, pan kanan, tilt up, rack focus, slow push).
 - characters: nama karakter yang tampak di frame, persis seperti di sheet.
 - dialog: kalimat yang diucapkan di shot ini (atau null).
-- imagePrompt: deskripsi frame kunci dalam bahasa Inggris untuk model gambar (komposisi, cahaya, lensa, mood, gaya "{{style}}"). Rujuk karakter dengan namanya; jangan deskripsikan ulang wajah (wajah diambil dari reference terkunci). Untuk anime, awali dengan "anime key frame," dan sebut kostum khas tokoh agar konsisten.
+- imagePrompt: deskripsi frame kunci dalam bahasa Inggris untuk model gambar (komposisi, cahaya, lensa, mood, gaya "{{style}}"). Rujuk karakter dengan namanya; jangan deskripsikan ulang wajah (wajah diambil dari reference terkunci). Ikuti awalan gaya dari panduan gaya di atas, dan sebut kostum khas tokoh agar konsisten.
 - motionPrompt: gerakan untuk image-to-video dalam bahasa Inggris, singkat.
 
 Balas HANYA JSON:

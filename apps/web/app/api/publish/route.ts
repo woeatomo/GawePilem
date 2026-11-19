@@ -46,7 +46,9 @@ export async function POST(req: Request) {
     return jsonError(422, 'moderation', mod.verdict === 'block' ? 'Konten melanggar kebijakan dan tidak bisa dipublikasikan.' : 'Konten ditandai untuk ditinjau tim sebelum dipublikasikan.');
   }
 
-  const { data: ep } = await s.db.from('episodes').select('approved_at, project_id').eq('id', r.episode_id).single();
+  const { data: ep } = await s.db.from('episodes').select('approved_at, project_id, projects(genre)').eq('id', r.episode_id).single();
+  // Konten anak wajib ditandai 'made for kids' di YouTube (COPPA); tidak bisa dimatikan kreator.
+  const madeForKids = (ep?.projects as unknown as { genre: string } | null)?.genre === 'anak';
   const variant = r.aspect_ratio === '9:16' && Number(r.duration_sec ?? 0) <= 180 ? 'shorts' : 'youtube';
   const job = await chargeAndEnqueue(admin, {
     userId: s.userId, workspaceId: s.workspaceId, projectId: ep?.project_id ?? null, episodeId: r.episode_id, type: 'publish', action: 'publish.youtube',
@@ -58,7 +60,7 @@ export async function POST(req: Request) {
       {
         workspace_id: r.workspace_id, render_id: r.id, episode_id: r.episode_id, social_account_id: acc.id, platform: 'youtube', variant,
         privacy: d.privacy, scheduled_at: d.publishAt ?? null, ai_label: true, status: 'queued', error: null,
-        metadata: { title: d.title, description: d.description, tags: d.tags, jobId: job.id },
+        metadata: { title: d.title, description: d.description, tags: d.tags, jobId: job.id, madeForKids },
       },
       { onConflict: 'render_id,social_account_id,variant' },
     )

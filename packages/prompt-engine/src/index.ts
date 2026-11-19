@@ -7,3 +7,4 @@ export * from './moderation';
 export * from './fixtures';
 export * from './screenplay';
 export type { ChatMessage } from './types';
+export * from './styles';

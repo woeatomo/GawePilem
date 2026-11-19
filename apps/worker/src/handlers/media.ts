@@ -1,6 +1,6 @@
 import { ProviderError, type CharacterReference } from '@atomo/ai-gateway';
 import type { Job, Row } from '@atomo/db';
-import { extractDialog } from '@atomo/prompt-engine';
+import { extractDialog, findStyle } from '@atomo/prompt-engine';
 import { admin } from '../db';
 import { getGateway, settingFor } from '../gateway';
 import { log, progress, type JobResult } from '../job';
@@ -14,20 +14,8 @@ const ANGLES = [
   { angle: 'full', prompt: 'full body shot, standing, neutral pose' },
 ] as const;
 
-const STYLE_EN: Record<string, string> = {
-  'realistis sinematik': 'cinematic photorealistic, 35mm film still, natural skin texture',
-  anime: 'Japanese TV anime style, anime key visual, clean crisp line art, cel shading, vibrant colors, detailed painted background, expressive eyes, original character design',
-  '3D animasi': '3D animated film style, soft global illumination',
-  'cat air': 'watercolor illustration style',
-  'noir hitam putih': 'black and white film noir, high contrast',
-};
-
-/** Negative prompt per gaya: anime menolak hasil fotorealistik, realistis menolak gaya kartun. */
-const NEGATIVE: Record<string, string> = {
-  anime: 'photorealistic, photo, 3d render, realistic skin texture, western cartoon, blurry, deformed hands, extra fingers, text, watermark, logo',
-  'realistis sinematik': 'cartoon, anime, illustration, deformed face, extra fingers, text, watermark, logo, celebrity likeness',
-};
-const negativeFor = (style: string) => NEGATIVE[style] ?? 'text, watermark, logo, extra fingers, deformed face, celebrity likeness';
+/** Gaya visual project → prompt gambar & negative prompt (registri di prompt-engine). */
+const negativeFor = (style: string) => `${findStyle(style).negative}, celebrity likeness, copyrighted character`;
 
 async function store(workspaceId: string, path: string, url: string): Promise<string> {
   const a = await fetchAsset(url);
@@ -48,13 +36,11 @@ export async function charref(job: Job, characterId: string): Promise<JobResult>
   const p = await project(c.project_id);
   const setting = await settingFor(job.workspace_id, 'image', job);
   const seed = Math.floor(Math.random() * 2 ** 31);
-  const style = STYLE_EN[p.visual_style] ?? p.visual_style;
+  const vs = findStyle(p.visual_style);
+  const style = vs.imageStyle;
   const refs: { angle: string; url: string }[] = [];
   for (const [i, a] of ANGLES.entries()) {
-    const anime = p.visual_style === 'anime';
-    const prompt = anime
-      ? `Anime character model sheet, ${a.prompt}. Original anime character, age ${c.age ?? 'adult'}. ${c.look}. Plain flat background, consistent design. ${style}. Not based on any existing anime character.`
-      : `Character reference sheet. ${a.prompt}. Original fictional character, Indonesian, age ${c.age ?? 'adult'}. ${c.look}. Plain dark studio background, soft key light. ${style}. Not a real person, not a celebrity.`;
+    const prompt = `${vs.charSheet}, ${a.prompt}. Age ${c.age ?? 'adult'}. ${c.look}. ${style}. Original character: not a real person, not based on any existing film, anime, game, or cartoon character.`;
     // Sudut 2+ memakai sudut depan sebagai reference supaya wajah konsisten.
     const characters: CharacterReference[] = refs[0] ? [{ characterId: c.id, name: c.name, imageUrls: [publicUrl(refs[0].url)] }] : [];
     const { images } = await (await getGateway()).generateImage(setting, { prompt, negativePrompt: negativeFor(p.visual_style), aspect: '1:1', seed, characters });
@@ -95,7 +81,8 @@ export async function keyframes(job: Job, shotIds: string[]): Promise<JobResult>
   const { data: ep } = await admin.from('episodes').select('project_id').eq('id', shots[0]!.episode_id).single();
   const p = await project(ep!.project_id);
   const setting = await settingFor(job.workspace_id, 'image', job);
-  const style = STYLE_EN[p.visual_style] ?? p.visual_style;
+  const vs = findStyle(p.visual_style);
+  const style = vs.imageStyle;
   let failed = 0;
   for (const [i, s] of shots.entries()) {
     try {

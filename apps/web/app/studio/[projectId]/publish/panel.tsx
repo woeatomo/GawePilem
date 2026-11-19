@@ -17,6 +17,7 @@ const FLASH: Record<string, string> = { connected: 'Channel YouTube terhubung.',
 export function PublishPanel(p: {
   projectId: string; episode: number; title: string; synopsis: string;
   renders: { id: string; url: string | null; aspect: string; duration: number; variant: string; at: string }[];
+  madeForKids: boolean;
   accounts: Acc[]; pubs: Pub[]; youtubeConfigured: boolean; quota: { used: number; limit: number }; plan: string; flash: string | null;
 }) {
   const yt = p.accounts.filter((a) => a.platform === 'youtube');
@@ -145,7 +146,10 @@ export function PublishPanel(p: {
             </div>
           </div>
           <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
-            <span className="pill acc">Label konten AI: aktif (wajib)</span>
+            <span className="row">
+              <span className="pill acc">Label konten AI: aktif (wajib)</span>
+              {p.madeForKids && <span className="pill info" title="Aturan COPPA: komentar & iklan personalisasi dinonaktifkan YouTube">Dibuat untuk anak: aktif (wajib)</span>}
+            </span>
             <button className="btn primary" disabled={busy || !title.trim() || !acc} onClick={publish}>{busy ? 'Mengirim…' : 'Publish ke YouTube'}</button>
           </div>
         </section>

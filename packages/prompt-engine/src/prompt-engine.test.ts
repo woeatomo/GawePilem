@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildPrompt, buildContext, selectTemplate, BUILTIN_TEMPLATES, GUARDRAILS, moderateText, mockResponder,
   charactersOutputSchema, shotlistOutputSchema, outlineOutputSchema, SAMPLE_SCENES, extractDialog, parseScreenplay,
-  pickDevices, STAGES, OUTPUT_SCHEMAS, type ProjectContext, type PromptTemplate,
+  pickDevices, STAGES, OUTPUT_SCHEMAS, VISUAL_STYLES, findStyle, STYLE_GUIDE, type ProjectContext, type PromptTemplate,
 } from './index';
 
 const project: ProjectContext = {
@@ -48,9 +48,32 @@ describe('buildPrompt', () => {
     const chars = buildPrompt({ stage: 'characters', project: anime }).messages[1]!.content;
     expect(chars).toMatch(/model sheet/);
     expect(chars).toMatch(/Fantasi:/);
-    expect(chars).toMatch(/Hindari meniru desain karakter/);
+    expect(chars).toMatch(/jangan meniru karakter, kostum, atau gaya khas studio/);
     expect(buildPrompt({ stage: 'shotlist', project: anime }).messages[1]!.content).toMatch(/anime key frame/);
     expect(buildPrompt({ stage: 'shotlist', project }).messages[1]!.content).toMatch(/sinematik realistis/);
+  });
+
+  it('registri gaya lengkap: id unik, tiap gaya punya panduan, prompt gambar, negative, dan awalan', () => {
+    expect(new Set(VISUAL_STYLES.map((s) => s.id)).size).toBe(VISUAL_STYLES.length);
+    expect(VISUAL_STYLES.length).toBeGreaterThanOrEqual(14);
+    for (const s of VISUAL_STYLES) {
+      expect(s.guide.length && s.imageStyle.length && s.negative.length && s.charSheet.length && s.framePrefix.length).toBeTruthy();
+      expect(STYLE_GUIDE[s.id]).toContain(s.framePrefix);
+    }
+    // id lama tetap ada (tersimpan di projects.visual_style)
+    for (const old of ['realistis sinematik', 'anime', '3D animasi', 'cat air', 'noir hitam putih']) expect(findStyle(old).id).toBe(old);
+    expect(findStyle('tidak-ada').id).toBe('realistis sinematik');
+  });
+
+  it('gaya webtoon & donghua & wayang masuk ke prompt shot list', () => {
+    for (const [style, prefix] of [['komik webtoon', 'webtoon panel'], ['donghua 3D', 'donghua'], ['wayang & batik', 'wayang']] as const) {
+      expect(buildPrompt({ stage: 'shotlist', project: { ...project, style } }).messages[1]!.content).toContain(prefix);
+    }
+    expect(buildPrompt({ stage: 'characters', project: { ...project, style: 'wayang & batik' } }).messages[1]!.content).toMatch(/hormat/);
+  });
+
+  it('genre anak: tanpa kekerasan menakutkan', () => {
+    expect(buildPrompt({ stage: 'outline', project: { ...project, genre: 'anak' } }).messages[1]!.content).toMatch(/Tidak ada kekerasan menakutkan/);
   });
 
   it('episode sebelumnya disebut agar tidak diulang', () => {

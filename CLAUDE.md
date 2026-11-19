@@ -124,6 +124,7 @@ Gateway bertanggung jawab atas:
 - Setiap prompt menyisipkan konteks: series bible, hasil riset, sheet karakter, dan scene terkait. Konteks dipangkas sesuai budget token model.
 - Larangan yang selalu disisipkan: tidak meniru karakter atau IP berhak cipta, dan tidak memakai wajah atau suara orang nyata.
 - Template mendorong variasi cerita, supaya channel kreator tidak dianggap konten massal atau repetitif.
+- Gaya visual hanya didefinisikan di `packages/prompt-engine/src/styles.ts` (panduan LLM, prompt gambar, negative prompt, reference karakter). Id gaya tersimpan di `projects.visual_style`: jangan ganti id yang sudah ada.
 
 ## Editor & timeline JSON
 
@@ -209,6 +210,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - [x] Halaman secret platform untuk superadmin dengan 2FA TOTP (`/admin/secrets`)
 - [x] Deploy: web di Cloudflare Workers (OpenNext), media di R2, worker Docker di VPS (`docs/DEPLOY.md`)
 - [x] Mode anime (panduan gaya & model sheet karakter) + master 16:9 dengan teaser 9:16 untuk Shorts (reframe blur/crop)
+- [x] 14 gaya visual (registri `VISUAL_STYLES` di prompt-engine: anime, chibi, kartun 2D, webtoon, donghua 3D, 3D keluarga, stop motion, wayang & batik, pixel art, dokumenter, dll.) + 9 preset project; genre anak otomatis 'made for kids' di YouTube
 
 ### Fase 3: Launch
 - [ ] Paket langganan, publish terjadwal, cross-post, analitik ringan

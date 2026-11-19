@@ -15,4 +15,3 @@ export const FORMAT_LABEL: Record<string, string> = {
   microdrama: 'Microdrama vertikal', film_pendek: 'Film pendek', serial: 'Serial episodik', dokumenter: 'Dokumenter pendek', iklan: 'Iklan naratif', animasi: 'Animasi',
 };
 export const GENRE_OPTIONS = ['horor', 'drama', 'thriller', 'misteri', 'romance', 'komedi', 'action', 'sci-fi', 'fantasi', 'sejarah', 'religi', 'anak'];
-export const STYLE_OPTIONS = ['realistis sinematik', 'anime', '3D animasi', 'cat air', 'noir hitam putih'];

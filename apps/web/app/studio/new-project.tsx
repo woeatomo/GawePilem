@@ -2,37 +2,16 @@
 
 import { useActionState, useState } from 'react';
 import { createProject } from '@/app/actions';
-import { FORMAT_LABEL, GENRE_OPTIONS, STYLE_OPTIONS } from '@/lib/stages';
-
-interface Preset {
-  id: string;
-  label: string;
-  format: string;
-  genre: string;
-  style: string;
-  aspect: '9:16' | '16:9' | '1:1';
-  episodes: number;
-  duration: number;
-  topicHint: string;
-}
-
-const PRESETS: Preset[] = [
-  {
-    id: 'anime', label: 'Serial anime 16:9', format: 'serial', genre: 'fantasi', style: 'anime', aspect: '16:9', episodes: 12, duration: 360,
-    topicHint: 'Dunia, tokoh utama dan keinginannya, konflik musim ini, target penonton. Mis. remaja penjaga gerbang dunia roh di kota pelabuhan fiktif.',
-  },
-  {
-    id: 'micro', label: 'Microdrama horor 9:16', format: 'microdrama', genre: 'horor', style: 'realistis sinematik', aspect: '9:16', episodes: 10, duration: 90,
-    topicHint: 'Kos-kosan tua di Yogyakarta. Mitos kamar nomor 7 yang selalu kosong, dengan tiga ketukan tiap jam 03.00. Penonton 18–34 tahun.',
-  },
-];
+import { VISUAL_STYLES, findStyle } from '@atomo/prompt-engine';
+import { PRESETS, type Preset } from '@/lib/presets';
+import { FORMAT_LABEL, GENRE_OPTIONS } from '@/lib/stages';
 
 const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1);
 
 export function NewProject() {
   const [state, act, pending] = useActionState(createProject, null);
-  const [v, setV] = useState<Omit<Preset, 'id' | 'label'>>(PRESETS[1]!);
-  const [presetId, setPresetId] = useState('micro');
+  const [v, setV] = useState<Omit<Preset, 'id' | 'label'>>(PRESETS[0]!);
+  const [presetId, setPresetId] = useState('anime');
   const set = <K extends keyof typeof v>(k: K, val: (typeof v)[K]) => setV((x) => ({ ...x, [k]: val }));
   const pick = (p: Preset) => {
     setPresetId(p.id);
@@ -43,20 +22,20 @@ export function NewProject() {
     <section className="card">
       <div className="card-h">
         <h2>Project baru</h2>
-        <div className="row">
-          <span className="small muted">Preset:</span>
-          {PRESETS.map((p) => (
-            <button key={p.id} type="button" className={`btn sm ${presetId === p.id ? 'primary' : ''}`} onClick={() => pick(p)}>
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <span className="small muted">Pilih preset, lalu sesuaikan</span>
+      </div>
+      <div className="quick" role="group" aria-label="Preset" style={{ marginBottom: 12 }}>
+        {PRESETS.map((p) => (
+          <button key={p.id} type="button" onClick={() => pick(p)} aria-pressed={presetId === p.id} style={presetId === p.id ? { borderStyle: 'solid', borderColor: 'var(--accent)', color: 'var(--text)', background: 'var(--accent-soft)' } : undefined}>
+            {p.label} · {p.aspect}
+          </button>
+        ))}
       </div>
       <form action={act} className="stack-sm">
         <div className="grid2">
           <div>
             <label className="lbl" htmlFor="title">Judul kerja</label>
-            <input id="title" name="title" type="text" required maxLength={120} placeholder={presetId === 'anime' ? 'Penjaga Gerbang Senja' : 'Kamar 7'} />
+            <input id="title" name="title" type="text" required maxLength={120} placeholder={PRESETS.find((p) => p.id === presetId)?.titleHint ?? 'Judul kerja'} />
           </div>
           <div className="grid3">
             <div>
@@ -74,7 +53,11 @@ export function NewProject() {
             <div>
               <label className="lbl" htmlFor="style">Gaya visual</label>
               <select id="style" name="style" value={v.style} onChange={(e) => set('style', e.target.value)}>
-                {STYLE_OPTIONS.map((g) => <option key={g} value={g}>{cap(g)}</option>)}
+                {[...new Set(VISUAL_STYLES.map((s) => s.group))].map((g) => (
+                  <optgroup key={g} label={g}>
+                    {VISUAL_STYLES.filter((s) => s.group === g).map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </optgroup>
+                ))}
               </select>
             </div>
           </div>
@@ -103,6 +86,7 @@ export function NewProject() {
             </div>
           </div>
         </div>
+        <p className="small muted">Gaya <b style={{ color: 'var(--text)' }}>{findStyle(v.style).label}</b>: {findStyle(v.style).blurb}</p>
         {v.aspect === '16:9' && <p className="small muted">Master 16:9 untuk YouTube. Versi 9:16 untuk Shorts/TikTok bisa dirender dari potongan episode di tahap Editor.</p>}
         {state?.message && <p className="note crit" role="alert">{state.message}</p>}
         <div className="row" style={{ justifyContent: 'flex-end' }}>

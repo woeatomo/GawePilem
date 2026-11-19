@@ -42,12 +42,13 @@ export async function publish(job: Job, publicationId: string): Promise<JobResul
     if (!r?.url) throw new ProviderError('File render tidak ada', 'youtube', 'bad_request');
     await admin.from('publications').update({ status: 'uploading', attempts: pub.attempts + 1, error: null }).eq('id', pub.id);
     const file = await fetchAsset(r.url);
-    const meta = pub.metadata as { title: string; description: string; tags: string[] };
+    const meta = pub.metadata as { title: string; description: string; tags: string[]; madeForKids?: boolean };
     let description = meta.description;
     if (pub.variant === 'shorts' && !/#shorts/i.test(meta.title + description)) description += '\n\n#Shorts';
     if (!/dibuat dengan bantuan AI/i.test(description)) description += '\n\nKonten ini dibuat dengan bantuan AI.';
     const up = await youtube.uploadVideo(tokens.accessToken, file.data, {
       title: meta.title, description, tags: meta.tags, privacy: pub.privacy as 'private' | 'unlisted' | 'public',
+      madeForKids: meta.madeForKids === true,
       ...(pub.scheduled_at ? { publishAt: new Date(pub.scheduled_at).toISOString() } : {}),
     }, fetch, (pct) => void progress(job.id, pct));
     await admin.from('publications').update({ status: 'published', platform_video_id: up.videoId, privacy: up.privacy, published_at: new Date().toISOString(), error: null }).eq('id', pub.id);

@@ -1,3 +1,4 @@
+import { DEFAULT_STYLE, VISUAL_STYLES } from './styles';
 import type { FilmFormat, Genre } from './schemas';
 
 /** Larangan yang SELALU disisipkan ke setiap prompt, tidak bisa dimatikan template. */
@@ -23,6 +24,9 @@ Perkenalkan dunia lewat tindakan tokoh, bukan eksposisi panjang. Ambil inspirasi
 Beri jeda napas di antara adegan aksi; kekalahan dan harga yang dibayar membuat kemenangan bermakna.`,
   'sci-fi': `Sci-fi: satu gagasan "bagaimana jika" yang dieksplorasi konsekuensinya pada manusia. Teknologi punya aturan dan keterbatasan yang konsisten.`,
   sejarah: `Sejarah: latar dan detail periode akurat; tandai bagian fiksi. Hindari menyudutkan kelompok tertentu.`,
+  anak: `Anak (penonton di bawah 13 tahun): bahasa sederhana, pesan positif tanpa menggurui, konflik ringan yang selesai di episode yang sama.
+Tidak ada kekerasan menakutkan, kata kasar, atau adegan berbahaya yang bisa ditiru. Tokoh anak memecahkan masalahnya sendiri.`,
+  religi: `Religi: hormati keyakinan, rujuk nilai universal (kejujuran, sabar, tolong-menolong). Jangan mengutip ayat/hadis tanpa sumber jelas atau mempertentangkan agama.`,
   default: `Tulis dengan detail spesifik, tokoh yang punya keinginan jelas, dan konflik yang terus bergerak.`,
 };
 
@@ -39,21 +43,10 @@ export const FORMAT_GUIDE: Partial<Record<FilmFormat, string>> & { default: stri
   default: `Tulis untuk tayangan video pendek yang padat.`,
 };
 
-/**
- * Panduan gaya visual. Untuk anime, deskripsi karakter harus berupa "model sheet" yang bisa
- * diulang persis di setiap shot (rambut, mata, kostum, aksesori) karena konsistensi tokoh adalah
- * hal pertama yang dinilai penonton anime.
- */
+/** Panduan gaya visual per id gaya (diturunkan dari registri VISUAL_STYLES). */
 export const STYLE_GUIDE: Record<string, string> & { default: string } = {
-  anime: `Gaya visual ANIME serial TV Jepang: line art bersih, cel shading, latar dilukis detail, warna hidup, ekspresi wajah ekspresif.
-- Deskripsi karakter ("look") WAJIB seperti model sheet: warna & model rambut, warna mata, bentuk wajah, tinggi relatif, kostum khas (warna utama), aksesori ikonik. Siluet tiap tokoh harus mudah dibedakan.
-- Shot pakai bahasa visual anime: establishing shot latar, close-up mata/ekspresi, speed lines untuk aksi, reaction shot singkat, cut ke detail benda simbolik.
-- Hindari meniru desain karakter, kostum, atau gaya khas studio/anime terkenal tertentu. Buat desain orisinal.`,
-  '3D animasi': `Gaya visual 3D animasi sinematik: bentuk karakter sederhana & ekspresif, material lembut, pencahayaan global.
-- Deskripsi karakter berupa model sheet (proporsi, warna, kostum, aksesori) supaya konsisten.`,
-  'cat air': `Gaya ilustrasi cat air: tepi lembut, tekstur kertas, palet terbatas. Deskripsi karakter fokus pada siluet & warna kostum.`,
-  'noir hitam putih': `Gaya noir hitam putih: kontras tinggi, bayangan tajam, komposisi miring. Deskripsi karakter fokus pada siluet & kostum.`,
-  default: `Gaya visual sinematik realistis. Deskripsi karakter konsisten: rambut, pakaian khas, ciri wajah, properti.`,
+  ...Object.fromEntries(VISUAL_STYLES.map((v) => [v.id, `${v.guide}\nAwali imagePrompt dengan "${v.framePrefix}".`])),
+  default: DEFAULT_STYLE.guide,
 };
 
 /**

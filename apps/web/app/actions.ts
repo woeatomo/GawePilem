@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Json } from '@atomo/db';
-import { sceneHeading } from '@atomo/prompt-engine';
+import { sceneHeading, VISUAL_STYLES } from '@atomo/prompt-engine';
 import { applyEdits, editOpSchema, EditError, timelineSchema } from '@atomo/timeline';
 import { buildTimeline } from '@/lib/assemble';
 import { loadProject } from '@/lib/project';
@@ -63,7 +63,7 @@ const projectSchema = z.object({
   format: z.enum(['microdrama', 'film_pendek', 'serial', 'dokumenter', 'iklan', 'animasi']),
   genre: z.string().trim().min(2).max(30),
   aspect: z.enum(['9:16', '16:9', '1:1']),
-  style: z.string().trim().min(2).max(60),
+  style: z.string().trim().min(2).max(60).refine((s) => VISUAL_STYLES.some((v) => v.id === s), 'Gaya visual tidak dikenal'),
   episodes: z.coerce.number().int().min(1).max(100),
   duration: z.coerce.number().int().min(15).max(3600),
   topic: z.string().trim().max(2000).default(''),
