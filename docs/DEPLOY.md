@@ -24,6 +24,24 @@ Tidak ada server yang perlu dirawat: tanpa VPS, tanpa Redis. Semua model AI dan 
 
 Perkiraan waktu setup pertama: 45–60 menit.
 
+## Cara cepat: satu perintah
+
+Setelah akun di bawah siap, semua langkah 1–4 dikerjakan `scripts/deploy.mjs` lewat API (tanpa koneksi Postgres langsung). Skrip aman diulang.
+
+```bash
+export SUPABASE_ACCESS_TOKEN=...   SUPABASE_PROJECT_REF=...
+export CLOUDFLARE_API_TOKEN=...    CLOUDFLARE_ACCOUNT_ID=...
+export DOMAIN=pilem.id             # web: studio.pilem.id, job: jobs.pilem.id, media: media.pilem.id
+pnpm deploy:prod -- --dry-run      # lihat rencana dulu
+pnpm deploy:prod
+# setelah daftar akun di web:
+SUPERADMIN_EMAIL=kamu@contoh.id pnpm deploy:prod -- --only superadmin
+```
+
+Token Cloudflare: template **Edit Cloudflare Workers**, lalu tambahkan izin **Workers R2 Storage: Edit** dan **Queues: Edit**, serta **DNS: Edit** pada zona domain. `ENCRYPTION_KEY` dan `WORKER_TOKEN` dibuat otomatis sekali di `.deploy/secrets.env` (gitignored): simpan salinannya di password manager.
+
+Langkah manual di bawah tetap berlaku bila ingin deploy tanpa skrip.
+
 ## Yang perlu disiapkan
 
 - Akun Cloudflare dengan domain, mis. `studio.contoh.id` (web), `jobs.contoh.id` (Worker job), `media.contoh.id` (R2).

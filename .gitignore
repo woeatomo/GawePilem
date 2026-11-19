@@ -20,3 +20,5 @@ dump.rdb
 .dev.vars
 apps/jobs/.dev.vars
 .render-local
+.deploy
+wrangler.production.json

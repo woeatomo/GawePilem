@@ -15,7 +15,8 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r --parallel typecheck",
     "format": "prettier --write .",
-    "test:e2e:anime": "bash e2e/run-anime.sh"
+    "test:e2e:anime": "bash e2e/run-anime.sh",
+    "deploy:prod": "node scripts/deploy.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

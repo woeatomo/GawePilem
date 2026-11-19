@@ -5,7 +5,7 @@
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
-  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "atomo-film-studio" }],
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "pilem-studio" }],
   "observability": { "enabled": true },
   // Variabel non-rahasia. Rahasia (SUPABASE_SERVICE_ROLE_KEY, ENCRYPTION_KEY, WORKER_TOKEN)
   // diisi dengan: npx wrangler secret put <NAMA>
