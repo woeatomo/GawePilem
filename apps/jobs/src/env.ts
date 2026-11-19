@@ -18,6 +18,9 @@ export interface Env {
   RENDER_API_KEY?: string;
   /** Target panjang segmen render (detik, default 120). Episode > 1,5× nilai ini dirender per segmen. */
   RENDER_SEGMENT_SEC?: string;
+  /** Batas paket Rendi (Free: 60 detik/perintah, 4 vCPU). Kosong = tanpa batas tambahan. */
+  RENDER_MAX_SECONDS?: string;
+  RENDER_MAX_VCPU?: string;
 }
 
 export type { MediaJobData };

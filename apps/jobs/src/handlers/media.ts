@@ -3,6 +3,7 @@ import { chunks, type MediaJobData, type Row } from '@atomo/db';
 import { extractDialog, findStyle } from '@atomo/prompt-engine';
 import { stillToClipCommand, type CameraMove, type Quality, type Timeline } from '@atomo/timeline';
 import type { Ctx } from '../ctx';
+import { renderOpts } from '../render-limits';
 import { beginJob, deadlineFrom, failJob, loadRunningJob, progress, succeedJob } from '../job';
 import type { InternalMessage } from '../messages';
 import { putBytes, putFromUrl } from '../storage';
@@ -212,7 +213,7 @@ async function shotsByIds(ctx: Ctx, ids: string[]) {
 
 async function submitCameraClip(ctx: Ctx, o: { jobId: string; workspaceId: string; shotId: string; imageUrl: string; durationSec: number; aspect: Timeline['aspect']; quality: Quality; move: CameraMove }) {
   const cmd = stillToClipCommand({ imageUrl: o.imageUrl, durationSec: o.durationSec, aspect: o.aspect, quality: o.quality, move: o.move, outputName: `clip-${o.shotId}.mp4` });
-  const commandId = await (await ctx.render()).submit(cmd, { maxSeconds: 300, vcpu: 2 });
+  const commandId = await (await ctx.render()).submit(cmd, renderOpts(ctx, 300, 2));
   await ctx.send({ kind: 'ffmpeg_poll', jobId: o.jobId, workspaceId: o.workspaceId, purpose: 'clip', targetId: o.shotId, commandId, key: `${o.workspaceId}/shots/${o.shotId}/clip-${o.jobId}`, deadline: Date.now() + 15 * 60_000, startedAt: Date.now(), expectedSec: o.durationSec }, 2);
 }
 

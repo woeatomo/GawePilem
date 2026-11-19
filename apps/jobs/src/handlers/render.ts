@@ -2,6 +2,7 @@ import { ProviderError } from '@atomo/ai-gateway';
 import type { MediaJobData } from '@atomo/db';
 import { muxCommand, outputSize, planSegments, remoteCommand, sliceTimeline, timelineDuration, timelineSchema, toAss, type Quality, type RemoteAsset, type Timeline } from '@atomo/timeline';
 import type { Ctx } from '../ctx';
+import { renderOpts } from '../render-limits';
 import { beginJob, failJob, loadRunningJob, progress, succeedJob } from '../job';
 import type { InternalMessage } from '../messages';
 import { putBytes, putFromUrl } from '../storage';
@@ -74,7 +75,7 @@ export async function render(ctx: Ctx, d: Extract<MediaJobData, { kind: 'render'
           part.kind === 'audio'
             ? remoteCommand(part.tl, { assets: audioAssets(part.tl), quality, parts: 'audio', outputName: `${r.id}-audio.m4a` })
             : remoteCommand(part.tl, { assets: videoAssets(part.tl), quality, parts: 'video', outputAspect: r.aspect_ratio, reframe, outputName: `${r.id}-seg${part.idx}.ts`, ...(subtitleUrl ? { subtitleUrl } : {}) });
-        const commandId = await client.submit(cmd, { maxSeconds: Math.max(300, Math.round(cmd.duration * 6)), vcpu: part.kind === 'audio' ? 2 : 8 });
+        const commandId = await client.submit(cmd, renderOpts(ctx, Math.max(300, Math.round(cmd.duration * 6)), part.kind === 'audio' ? 2 : 8));
         const { data: seg, error } = await ctx.admin
           .from('render_segments')
           .insert({ render_id: r.id, workspace_id: r.workspace_id, idx: part.idx, kind: part.kind, range_start: part.start, range_end: part.end, command_id: commandId })
@@ -95,7 +96,7 @@ export async function render(ctx: Ctx, d: Extract<MediaJobData, { kind: 'render'
       assets: { ...videoAssets(timeline), ...audioAssets(timeline) }, quality, outputName: `${r.id}.mp4`, outputAspect: r.aspect_ratio, reframe,
       ...(subtitleUrl ? { subtitleUrl } : {}),
     });
-    const commandId = await (await ctx.render()).submit(cmd, { maxSeconds: Math.max(300, Math.round(cmd.duration * 6)), vcpu: 8 });
+    const commandId = await (await ctx.render()).submit(cmd, renderOpts(ctx, Math.max(300, Math.round(cmd.duration * 6)), 8));
     await ctx.admin.from('renders').update({ status: 'running', progress: 2, error: null }).eq('id', r.id);
     await ctx.send(
       { kind: 'ffmpeg_poll', jobId: job.id, workspaceId: r.workspace_id, purpose: 'render', targetId: r.id, commandId, key: `${r.workspace_id}/renders/${r.id}`, deadline: Date.now() + 60 * 60_000, startedAt: Date.now(), expectedSec: cmd.duration },
@@ -193,7 +194,7 @@ async function maybeMux(ctx: Ctx, jobId: string, renderId: string) {
   const audio = ready.find((s) => s.kind === 'audio')!;
   const duration = Math.max(...video.map((s) => Number(s.range_end)));
   const cmd = muxCommand({ segmentUrls: video.map((s) => s.url!), audioUrl: audio.url!, duration, outputName: `${renderId}.mp4` });
-  const commandId = await (await ctx.render()).submit(cmd, { maxSeconds: 900, vcpu: 2 });
+  const commandId = await (await ctx.render()).submit(cmd, renderOpts(ctx, 900, 2));
   await ctx.send(
     { kind: 'ffmpeg_poll', jobId, workspaceId: r.workspace_id, purpose: 'render', targetId: renderId, commandId, key: `${r.workspace_id}/renders/${renderId}`, deadline: Date.now() + 30 * 60_000, startedAt: Date.now(), expectedSec: duration },
     5,

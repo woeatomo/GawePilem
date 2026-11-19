@@ -38,6 +38,8 @@ pnpm deploy:prod
 SUPERADMIN_EMAIL=kamu@contoh.id pnpm deploy:prod -- --only superadmin
 ```
 
+Mulai dengan paket gratis: tambahkan `FREE_TIER=1`. Skrip lalu menghapus `limits.cpu_ms` (tidak diterima Workers Free) dan membatasi render ke paket Rendi Free (perintah ≤ 60 detik, 4 vCPU, segmen 30 detik). Batas yang perlu diawasi: Workers Free 10 ms CPU per request (halaman berat bisa kena Error 1102), Queues 10.000 operasi/hari, Rendi Free 50 GB proses/bulan, Supabase Free berhenti otomatis setelah 1 minggu tanpa aktivitas.
+
 Token Cloudflare: template **Edit Cloudflare Workers**, lalu tambahkan izin **Workers R2 Storage: Edit** dan **Queues: Edit**, serta **DNS: Edit** pada zona domain. `ENCRYPTION_KEY` dan `WORKER_TOKEN` dibuat otomatis sekali di `.deploy/secrets.env` (gitignored): simpan salinannya di password manager.
 
 Langkah manual di bawah tetap berlaku bila ingin deploy tanpa skrip.

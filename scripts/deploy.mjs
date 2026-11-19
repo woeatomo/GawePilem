@@ -19,6 +19,8 @@
  *   WEB_HOST (default studio.<DOMAIN>), JOBS_HOST (jobs.<DOMAIN>), MEDIA_HOST (media.<DOMAIN>)
  *   SUPERADMIN_EMAIL        angkat superadmin (akun harus sudah daftar di web)
  *   ENCRYPTION_KEY, WORKER_TOKEN   bila kosong dibuat sekali & disimpan di .deploy/secrets.env (jangan hilang!)
+ *   FREE_TIER=1             sesuaikan dengan paket gratis: Workers Free (tanpa limits.cpu_ms) &
+ *                           Rendi Free (perintah ≤ 60 dtk, 4 vCPU, segmen render 30 dtk)
  */
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -54,6 +56,7 @@ cfg.web = env('WEB_HOST', `studio.${cfg.domain}`);
 cfg.jobs = env('JOBS_HOST', `jobs.${cfg.domain}`);
 cfg.media = env('MEDIA_HOST', `media.${cfg.domain}`);
 cfg.supabaseUrl = `https://${cfg.ref}.supabase.co`;
+cfg.free = env('FREE_TIER') === '1';
 
 /** Rahasia platform: dibuat sekali, disimpan lokal (gitignored), dipakai ulang di deploy berikutnya. */
 function platformSecrets() {
@@ -184,7 +187,7 @@ export function productionConfig(file, vars, host) {
 
 function writeConfig(dir, conf) {
   const path = join(ROOT, dir, 'wrangler.production.json');
-  if (DRY) console.log(`    tulis ${dir}/wrangler.production.json:\n${JSON.stringify({ name: conf.name, vars: conf.vars, routes: conf.routes, services: conf.services }, null, 2).replace(/^/gm, '      ')}`);
+  if (DRY) console.log(`    tulis ${dir}/wrangler.production.json:\n${JSON.stringify({ name: conf.name, vars: conf.vars, routes: conf.routes, services: conf.services, limits: conf.limits }, null, 2).replace(/^/gm, '      ')}`);
   else writeFileSync(path, JSON.stringify(conf, null, 2));
   return path;
 }
@@ -205,9 +208,13 @@ async function jobs() {
   log('Worker job (atomo-jobs)');
   const { service } = await supabaseKeys();
   const s = platformSecrets();
-  const conf = writeConfig('apps/jobs', productionConfig(join(ROOT, 'apps/jobs/wrangler.jsonc'), {
+  const base = productionConfig(join(ROOT, 'apps/jobs/wrangler.jsonc'), {
     NEXT_PUBLIC_SUPABASE_URL: cfg.supabaseUrl, MEDIA_PUBLIC_URL: `https://${cfg.media}`, APP_URL: `https://${cfg.web}`, AI_MOCK: '0',
-  }, cfg.jobs));
+    ...(cfg.free ? { RENDER_SEGMENT_SEC: '30', RENDER_MAX_SECONDS: '60', RENDER_MAX_VCPU: '4' } : {}),
+  }, cfg.jobs);
+  // Workers Free tidak menerima limits.cpu_ms (batas CPU 10 ms; waktu tunggu jaringan tidak dihitung).
+  if (cfg.free) delete base.limits;
+  const conf = writeConfig('apps/jobs', base);
   // Deploy dulu agar Worker ada, lalu isi rahasia (bulk membuat versi baru dengan rahasia terpasang).
   run('npx', ['wrangler', 'deploy', '-c', conf], { cwd: join(ROOT, 'apps/jobs') });
   putSecrets('apps/jobs', conf, { SUPABASE_SERVICE_ROLE_KEY: service, ENCRYPTION_KEY: s.ENCRYPTION_KEY, WORKER_TOKEN: s.WORKER_TOKEN });
@@ -259,7 +266,7 @@ async function superadmin() {
 
 const ALL = { supabase, cloudflare, jobs, web, smoke, superadmin };
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  if (DRY) log(`DRY RUN — tidak ada yang dipanggil. web=${cfg.web} jobs=${cfg.jobs} media=${cfg.media}`);
+  if (DRY) log(`DRY RUN — tidak ada yang dipanggil. web=${cfg.web} jobs=${cfg.jobs} media=${cfg.media}${cfg.free ? ' (mode paket gratis)' : ''}`);
   for (const step of STEPS) if (!ONLY || ONLY === step) await ALL[step]();
   console.log(`
 Selesai. Langkah manual berikutnya:
