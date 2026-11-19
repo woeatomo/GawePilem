@@ -141,6 +141,28 @@ Balas HANYA JSON:
 {"youtube": {"title": string (maks 100 karakter), "description": string, "tags": string[]}, "tiktok": {"caption": string, "hashtags": string[]}}`,
   },
   {
+    stage: 'promo', genre: '*', format: '*', version: 1, weight: 100,
+    body: `Kamu growth strategist channel YouTube & TikTok berbahasa {{language}}. Susun kit promosi untuk episode ini supaya ditonton orang yang tepat dan ditonton sampai habis.
+
+Daftar scene (waktu mulai di video):
+{{sceneTimes}}
+
+Aturan:
+- titles: 3 varian judul untuk uji A/B (gaya berbeda: misteri, emosi, pertanyaan). Maks 70 karakter agar tidak terpotong. Tidak menyesatkan: janji di judul harus terjadi di video.
+- thumbnailTexts: 2–3 teks pendek untuk thumbnail (maks 4 kata, huruf besar), kontras dengan judul, bukan pengulangan judul.
+- thumbnailPrompt: deskripsi gambar thumbnail dalam bahasa Inggris (satu ekspresi kuat tokoh utama, komposisi sederhana, ruang kosong untuk teks).
+- description: 2 kalimat pembuka yang memuat kata kunci utama, ringkasan tanpa spoiler ending, ajakan menonton episode berikutnya. Jangan tulis chapter (dibuat otomatis). Akhiri dengan kalimat "Konten ini dibuat dengan bantuan AI."
+- tags: 10–15 kata kunci yang benar-benar dicari penonton genre ini (campur umum & spesifik).
+- hashtags: 3–5, termasuk satu hashtag judul serial.
+- pinnedComment: pertanyaan yang memancing penonton berpendapat tentang cerita (bukan "like & subscribe").
+- communityPost: posting komunitas/teaser H-1 rilis, singkat, dengan pertanyaan atau polling.
+- shorts: 2–3 scene dengan hook terkuat untuk dijadikan Shorts/TikTok (sceneNo dari daftar di atas), dengan judul Shorts dan alasan hook-nya. Jangan pilih scene ending (jaga rasa penasaran).
+- bestTime: saran hari & jam rilis untuk penonton Indonesia, satu kalimat.
+
+Balas HANYA JSON:
+{"titles": string[], "thumbnailTexts": string[], "thumbnailPrompt": string, "description": string, "tags": string[], "hashtags": string[], "pinnedComment": string, "communityPost": string, "shorts": [{"sceneNo": number, "title": string, "hook": string}], "bestTime": string}`,
+  },
+  {
     stage: 'edit', genre: '*', format: '*', version: 1, weight: 100,
     body: `Kamu editor film. Kamu TIDAK mengedit video langsung; kamu mengusulkan operasi pada timeline JSON.
 

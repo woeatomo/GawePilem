@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildPrompt, buildContext, selectTemplate, BUILTIN_TEMPLATES, GUARDRAILS, moderateText, mockResponder,
-  charactersOutputSchema, shotlistOutputSchema, outlineOutputSchema, SAMPLE_SCENES, extractDialog, parseScreenplay,
+  charactersOutputSchema, promoKitSchema, shotlistOutputSchema, outlineOutputSchema, SAMPLE_SCENES, extractDialog, parseScreenplay,
   pickDevices, STAGES, OUTPUT_SCHEMAS, VISUAL_STYLES, findStyle, STYLE_GUIDE, type ProjectContext, type PromptTemplate,
 } from './index';
 
@@ -118,6 +118,7 @@ describe('fixture mock valid terhadap skema', () => {
     expect(charactersOutputSchema.parse(JSON.parse(mockResponder(req('characters')))).characters).toHaveLength(3);
     expect(outlineOutputSchema.parse(JSON.parse(mockResponder(req('outline')))).scenes).toHaveLength(3);
     expect(shotlistOutputSchema.parse(JSON.parse(mockResponder(req('shotlist')))).shots).toHaveLength(12);
+    expect(promoKitSchema.parse(JSON.parse(mockResponder(req('promo')))).titles).toHaveLength(3);
     expect(mockResponder(req('scene', 'Tulis scene 2 lengkap'))).toContain('KAMAR 6');
     const edit = OUTPUT_SCHEMAS.edit.parse(JSON.parse(mockResponder(req('edit', '[{"shotId":"a","in":0,"out":5},{"shotId":"b","in":0,"out":3}]'))));
     expect(edit.ops).toEqual([{ op: 'trim', shotId: 'a', out: 4 }, { op: 'transition', shotId: 'b', transition: 'dip' }]);

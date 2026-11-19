@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { env } from '@/lib/env';
 import { loadStage, Stage } from '@/lib/stage';
 import { youtubeClient } from '@/lib/youtube';
+import { promoKitSchema } from '@atomo/prompt-engine';
+import { timelineSchema } from '@atomo/timeline';
+import { chapters, chapterText, sceneSpans, shortRange } from '@/lib/promo';
 import { PublishPanel } from './panel';
 
 export const metadata: Metadata = { title: 'Publish' };
@@ -20,6 +23,18 @@ export default async function Page(props: { params: Promise<{ projectId: string 
   ]);
   const ready = b.renders.filter((r) => r.status === 'ready' && r.url);
   const e = env();
+  const promo = promoKitSchema.safeParse(b.episode.promo);
+  const tl = b.timeline ? timelineSchema.safeParse(b.timeline.data) : null;
+  const spans = tl?.success ? sceneSpans(tl.data, new Map(b.shots.map((x) => [x.id, x.scene_no]))) : [];
+  const total = spans.at(-1)?.end ?? 0;
+  const scenes = b.script?.content.scenes ?? [];
+  const heading = (n: number) => (b.script?.content.summaries?.[n - 1] ?? scenes[n - 1]?.heading ?? '').split(/[.!?]/)[0]!.trim();
+  const shorts = promo.success
+    ? promo.data.shorts.flatMap((x) => {
+        const sp = spans.find((y) => y.sceneNo === x.sceneNo);
+        return sp ? [{ ...x, ...shortRange(sp, total) }] : [];
+      })
+    : [];
   return (
     <Stage data={data} stage="publish">
       <PublishPanel
@@ -35,6 +50,9 @@ export default async function Page(props: { params: Promise<{ projectId: string 
         quota={{ used: usedToday ?? 0, limit: e.YOUTUBE_DAILY_UPLOADS }}
         plan={data.session.profile.plan}
         flash={typeof sp.yt === 'string' ? sp.yt : null}
+        promo={promo.success ? promo.data : null}
+        chapters={chapterText(chapters(spans, heading, total))}
+        shorts={shorts}
       />
     </Stage>
   );

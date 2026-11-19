@@ -4,8 +4,10 @@ import { estimate, requiresConfirmation, type Category, type Estimate } from '@a
 import { chargeAndEnqueue, chunks, CreditError, jobFail, jobRunning, jobSucceed, type Json, type Job } from '@atomo/db';
 import {
   buildPrompt, moderateText, moderationMessage, OUTPUT_SCHEMAS, sceneHeading, findModelContext,
-  type CharactersOutput, type OutlineOutput, type ShotlistOutput,
+  type CharactersOutput, type OutlineOutput, type PromoKit, type ShotlistOutput,
 } from './engine';
+import { timelineSchema, type Timeline } from '@atomo/timeline';
+import { formatTs, sceneSpans } from '../promo';
 import type { Session } from '../auth';
 import { enqueueMedia } from '../queue';
 import { loadRates, loadSecretSetting, gateway } from '../settings';
@@ -13,7 +15,6 @@ import { supabaseAdmin } from '../supabase/server';
 import type { ProjectBundle, ScriptContent } from '../project';
 import { ACTION_META, actionParams, quantities, type ActionId, type ActionParams } from './actions';
 import { projectContext, quantityContext } from './context';
-import type { Timeline } from '@atomo/timeline';
 
 export class ActionError extends Error {
   constructor(
@@ -260,7 +261,7 @@ function contextScenes(action: ActionId, p: Record<string, unknown>, b: ProjectB
   const n = p.sceneNo as number | undefined;
   if (action === 'scene' && n) return { scenes: [n - 1, n + 1].filter((x) => x > 0 && x <= (b.script?.content.scenes.length ?? 0)) };
   if (action === 'shotlist' && n) return { scenes: [n] };
-  if (action === 'shotlist' || action === 'continuity' || action === 'publish_meta') return { scenes: 'all' };
+  if (action === 'shotlist' || action === 'continuity' || action === 'publish_meta' || action === 'promo') return { scenes: 'all' };
   return {};
 }
 
@@ -280,6 +281,19 @@ function promptVars(action: ActionId, p: Record<string, unknown>, b: ProjectBund
       return { sceneNo: n, instruction: p.instruction as string, sceneText: scenes[n - 1]?.body ?? '' };
     case 'edit':
       return { instruction: p.instruction as string, timeline: compactTimeline(b) };
+    case 'promo': {
+      const t = b.timeline && timelineSchema.safeParse(b.timeline.data);
+      const spans = t && t.success ? sceneSpans(t.data, new Map(b.shots.map((x) => [x.id, x.scene_no]))) : [];
+      const at = new Map(spans.map((x) => [x.sceneNo, x]));
+      return {
+        sceneTimes: scenes
+          .map((sc, i) => {
+            const sp = at.get(i + 1);
+            return `SC${i + 1}${sp ? ` [${formatTs(sp.start)}–${formatTs(sp.end)}]` : ''} ${sceneHeading(sc.heading)}: ${b.script?.content.summaries?.[i] ?? ''}`.trim();
+          })
+          .join('\n'),
+      };
+    }
     case 'shotlist': {
       if (p.sceneNo === undefined) return { scope: 'seluruh episode' };
       // Target per scene: bagi rata durasi episode, minimal 10 detik.
@@ -407,6 +421,11 @@ async function persistStructured(action: ActionId, p: Record<string, unknown>, b
       if (error) throw new Error(error.message);
       await s.db.from('episodes').update({ title: b.episode.title }).eq('id', b.episode.id);
       return `${rows.length} shot`;
+    }
+    case 'promo': {
+      const { error } = await s.db.from('episodes').update({ promo: data as Json }).eq('id', b.episode.id);
+      if (error) throw new Error(error.message);
+      return `${(data as PromoKit).titles.length} judul, ${(data as PromoKit).shorts.length} kandidat Shorts`;
     }
     case 'edit':
       // Usulan tidak langsung diterapkan: kreator menerima atau membatalkan di editor.

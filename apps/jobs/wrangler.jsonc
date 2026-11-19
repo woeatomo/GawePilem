@@ -22,8 +22,8 @@
     ]
   },
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "atomo-media" }],
-  // Sapuan kredit hangus harian (02.00 WIB).
-  "triggers": { "crons": ["0 19 * * *"] },
+  // Sapuan kredit hangus harian (02.00 WIB) + turunkan paket yang habis periodenya (tiap jam).
+  "triggers": { "crons": ["0 19 * * *", "17 * * * *"] },
   // Rahasia: wrangler secret put SUPABASE_SERVICE_ROLE_KEY / ENCRYPTION_KEY / WORKER_TOKEN
   "vars": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://GANTI.supabase.co",

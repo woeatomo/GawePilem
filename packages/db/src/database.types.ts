@@ -355,6 +355,7 @@ export type Database = {
           id: string;
           number: number;
           project_id: string;
+          promo: Json | null;
           status: Database['public']['Enums']['episode_status'];
           synopsis: string;
           title: string;
@@ -369,6 +370,7 @@ export type Database = {
           id?: string;
           number: number;
           project_id: string;
+          promo?: Json | null;
           status?: Database['public']['Enums']['episode_status'];
           synopsis?: string;
           title?: string;
@@ -382,6 +384,7 @@ export type Database = {
           id?: string;
           number?: number;
           project_id?: string;
+          promo?: Json | null;
           status?: Database['public']['Enums']['episode_status'];
           synopsis?: string;
           title?: string;
@@ -1399,6 +1402,45 @@ export type Database = {
           },
         ];
       };
+      subscriptions: {
+        Row: {
+          created_at: string;
+          current_period_end: string;
+          offer_id: string;
+          reminded_at: string | null;
+          tier: Database['public']['Enums']['plan_tier'];
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          current_period_end: string;
+          offer_id: string;
+          reminded_at?: string | null;
+          tier: Database['public']['Enums']['plan_tier'];
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          current_period_end?: string;
+          offer_id?: string;
+          reminded_at?: string | null;
+          tier?: Database['public']['Enums']['plan_tier'];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'subscriptions_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: true;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       timelines: {
         Row: {
           created_at: string;
@@ -1459,9 +1501,12 @@ export type Database = {
           gateway: string;
           gateway_ref: string | null;
           id: string;
+          kind: string;
+          months: number | null;
           pack_id: string;
           paid_at: string | null;
           payment_method: string | null;
+          plan_tier: Database['public']['Enums']['plan_tier'] | null;
           status: Database['public']['Enums']['order_status'];
           user_id: string;
         };
@@ -1473,9 +1518,12 @@ export type Database = {
           gateway: string;
           gateway_ref?: string | null;
           id?: string;
+          kind?: string;
+          months?: number | null;
           pack_id: string;
           paid_at?: string | null;
           payment_method?: string | null;
+          plan_tier?: Database['public']['Enums']['plan_tier'] | null;
           status?: Database['public']['Enums']['order_status'];
           user_id: string;
         };
@@ -1486,9 +1534,12 @@ export type Database = {
           gateway?: string;
           gateway_ref?: string | null;
           id?: string;
+          kind?: string;
+          months?: number | null;
           pack_id?: string;
           paid_at?: string | null;
           payment_method?: string | null;
+          plan_tier?: Database['public']['Enums']['plan_tier'] | null;
           status?: Database['public']['Enums']['order_status'];
           user_id?: string;
         };
@@ -1649,6 +1700,7 @@ export type Database = {
       dearmor: { Args: { '': string }; Returns: string };
       delete_platform_secret: { Args: { p_name: string }; Returns: undefined };
       expire_due_credits: { Args: { p_now?: string; p_user_id: string }; Returns: number };
+      expire_subscriptions: { Args: Record<PropertyKey, never>; Returns: number };
       gen_random_uuid: { Args: Record<PropertyKey, never>; Returns: string };
       gen_salt: { Args: { '': string }; Returns: string };
       is_superadmin_aal2: { Args: Record<PropertyKey, never>; Returns: boolean };

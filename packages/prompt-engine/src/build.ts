@@ -35,6 +35,7 @@ const OUTPUT_BUDGET: Record<Stage, number> = {
   continuity: 1_500,
   publish_meta: 1_000,
   edit: 1_500,
+  promo: 2_000,
 };
 
 const LANG: Record<string, string> = { id: 'Indonesia', en: 'Inggris', ms: 'Melayu', jv: 'Jawa' };

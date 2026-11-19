@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { estimate, SEED_RATES } from '@atomo/credits';
 import { SAMPLE_SCENES, SAMPLE_SHOTLIST } from '@atomo/prompt-engine';
-import { timelineSchema } from '@atomo/timeline';
+import { timelineSchema, type Timeline } from '@atomo/timeline';
 import { quantities, actionParams } from './ai/actions';
 import { dialogLines, quantityContext } from './ai/context';
 import { assignLines, buildTimeline } from './assemble';
+import { chapters, chapterText, formatTs, sceneSpans, shortRange } from './promo';
 import type { ProjectBundle } from './project';
 import type { Row } from '@atomo/db';
 
@@ -78,5 +79,31 @@ describe('rakit timeline dari data project', () => {
     expect(buildTimeline({ ...b, audio }).timeline.tracks.dialog).toHaveLength(0);
     const ok = [{ ...audio[0]!, text: l.text }] as Row<'audio_tracks'>[];
     expect(buildTimeline({ ...b, audio: ok }).timeline.tracks.dialog).toHaveLength(1);
+  });
+});
+
+describe('kit promosi: chapter & rentang Shorts dari timeline', () => {
+  const t = {
+    fps: 24, aspect: '16:9',
+    tracks: {
+      video: [
+        { shotId: 'a', in: 0, out: 6 }, { shotId: 'b', in: 0, out: 8 }, // SC1 0–14
+        { shotId: 'c', in: 0, out: 5 }, // SC2 14–19 (pendek → digabung)
+        { shotId: 'd', in: 0, out: 30 }, // SC3 19–49
+        { shotId: 'e', in: 0, out: 40 }, // SC4 49–89
+      ],
+      dialog: [], music: [], sfx: [], subtitle: [],
+    },
+  } as const;
+  const scene = new Map([['a', 1], ['b', 1], ['c', 2], ['d', 3], ['e', 4]]);
+  it('scene → rentang, chapter mulai 0:00, chapter < 10 dtk digabung', () => {
+    const spans = sceneSpans(t as unknown as Timeline, scene);
+    expect(spans.map((s) => [s.sceneNo, s.start, s.end])).toEqual([[1, 0, 14], [2, 14, 19], [3, 19, 49], [4, 49, 89]]);
+    const cs = chapters(spans, (n) => `Bagian ${n}`, 89);
+    expect(chapterText(cs)).toBe('0:00 Bagian 1\n0:14 Bagian 2\n0:49 Bagian 4');
+    expect(chapters(spans.slice(0, 2), String, 19)).toEqual([]);
+    expect(shortRange(spans[3]!, 89)).toEqual({ start: 49, end: 89 });
+    expect(shortRange(spans[1]!, 89)).toEqual({ start: 14, end: 29 });
+    expect(formatTs(3725)).toBe('1:02:05');
   });
 });

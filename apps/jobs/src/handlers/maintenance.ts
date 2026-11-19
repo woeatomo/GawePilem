@@ -27,3 +27,10 @@ export async function expireCredits(ctx: Ctx) {
   }
   ctx.log('sapuan kredit hangus selesai', { users: (users as unknown as string[] | null)?.length ?? 0, credits: total });
 }
+
+/** Turunkan paket yang periodenya sudah habis ke Gratis (kredit sisa tetap milik user). */
+export async function expireSubscriptions(ctx: Ctx) {
+  const { data, error } = await ctx.admin.rpc('expire_subscriptions', {});
+  if (error) throw new Error(error.message);
+  if (data) ctx.log('paket kedaluwarsa diturunkan', { users: data });
+}

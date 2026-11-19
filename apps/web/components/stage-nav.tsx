@@ -31,6 +31,9 @@ export function StageNav({ projectId, status, episode, active, superadmin }: { p
       <Link href="/saldo" className={active === 'saldo' ? 'on' : ''}>
         <span className="ico">◎</span>Saldo & tarif
       </Link>
+      <Link href="/paket" className={active === 'paket' ? 'on' : ''}>
+        <span className="ico">★</span>Paket & langganan
+      </Link>
       <Link href="/provider" className={active === 'provider' ? 'on' : ''}>
         <span className="ico">⌁</span>Provider AI
       </Link>

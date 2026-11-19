@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { PublishMeta } from '@atomo/prompt-engine';
+import type { PromoKit, PublishMeta } from '@atomo/prompt-engine';
+import { PromoCard, type ShortCandidate } from './promo';
 import { AIButton } from '@/components/use-ai';
 import { useToast } from '@/components/ui';
 
@@ -19,6 +20,7 @@ export function PublishPanel(p: {
   renders: { id: string; url: string | null; aspect: string; duration: number; variant: string; at: string }[];
   madeForKids: boolean;
   accounts: Acc[]; pubs: Pub[]; youtubeConfigured: boolean; quota: { used: number; limit: number }; plan: string; flash: string | null;
+  promo: PromoKit | null; chapters: string; shorts: ShortCandidate[];
 }) {
   const yt = p.accounts.filter((a) => a.platform === 'youtube');
   const [renderId, setRenderId] = useState(p.renders.find((r) => r.variant === 'master')?.id ?? p.renders[0]?.id ?? '');
@@ -78,6 +80,21 @@ export function PublishPanel(p: {
         </div>
       </header>
       {!render && <p className="note warn">Belum ada render siap. Selesaikan render di tahap Editor dulu.</p>}
+      <PromoCard
+        projectId={p.projectId}
+        episode={p.episode}
+        promo={p.promo}
+        chapters={p.chapters}
+        shorts={p.shorts}
+        plan={p.plan}
+        hasMaster={p.renders.some((r) => r.variant === 'master')}
+        onUse={(m) => {
+          if (m.title) setTitle(m.title);
+          if (m.description) setDesc(m.description);
+          if (m.tags) setTags(m.tags);
+          toast(yt.length ? 'Dipakai di metadata YouTube di bawah' : 'Disimpan di form. Hubungkan YouTube untuk publish langsung, atau salin manual.', 'info');
+        }}
+      />
       <div className="plat">
         <section className="pcard">
           <div className="ph">

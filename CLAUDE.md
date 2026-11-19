@@ -94,6 +94,8 @@ Kreator bisa review, edit, dan generate ulang di setiap tahap. Hasil tiap tahap 
 - Kategori yang memakai BYOK tidak memotong saldo, tapi tetap dicatat di `jobs` (cost 0, `billing_mode = 'byok'`).
 - Budget cap opsional per kategori per project.
 - Kredit berlaku 12 bulan sejak top-up (FIFO).
+- Paket & langganan (`PLAN_OFFERS` di `packages/credits/src/plans.ts`, halaman `/paket`): prabayar 1/3 bulan (QRIS/VA/e-wallet tidak auto-debit), kredit paket langsung masuk, aktivasi atomik di RPC `topup_order_paid` (pesanan `kind = 'plan'`), tabel `subscriptions`, cron Worker job menurunkan paket habis ke `free`. Paket lebih rendah tidak bisa dibeli selama paket lebih tinggi aktif.
+- Mode AI satu klik (Hemat / Seimbang / Gacor, `AI_PROFILE_META`) mengatur tier + model default semua kategori; estimasi episode memakai `episodeEstimate`.
 
 ## AI gateway
 
@@ -162,6 +164,7 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 - YouTube: kuota upload per project dibatasi per hari. Antrekan upload dan tampilkan sisa kuota. Project API yang belum lolos audit Google mengunggah video sebagai private.
 - TikTok: klien yang belum diaudit hanya bisa posting private dan dibatasi jumlah user per 24 jam. Tampilkan status ini dengan jelas di UI.
 - Simpan setiap upload di tabel `publications` beserta `platform_video_id`, status, dan error.
+- Kit promosi per episode (aksi `promo`, disimpan di `episodes.promo`): varian judul A/B, teks thumbnail, deskripsi, tag, komentar pin, posting komunitas, kandidat Shorts. Chapter dan rentang Shorts dihitung dari timeline terbaru (`apps/web/lib/promo.ts`). Tidak pernah ada fitur beli views/engagement.
 
 ## Skema database (ringkas)
 
@@ -223,7 +226,8 @@ Fitur AI editor: rakit otomatis dari shot list + VO, edit dengan perintah teks, 
 
 ### Fase 3: Launch
 - [x] Episode panjang (maks 20 menit): shot list per scene, batch tulis/pecah scene, hybrid gerak kamera, render per segmen + gabung tanpa re-encode
-- [ ] Paket langganan, publish terjadwal, cross-post, analitik ringan
+- [x] Halaman paket & langganan (prabayar), mode AI Hemat/Seimbang/Gacor, kit promosi + Shorts dari kandidat AI
+- [ ] Publish terjadwal, cross-post, analitik ringan (CTR & retensi dari YouTube Analytics)
 
 ### Fase 4: Scale
 - [ ] Series autopilot, format 16:9 panjang dengan reframe, marketplace template, workspace tim

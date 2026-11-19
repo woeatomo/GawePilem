@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { CAMERA_MOVES, editProposalSchema } from '@atomo/timeline';
 
-export const STAGES = ['research', 'characters', 'outline', 'scene', 'rewrite', 'shotlist', 'continuity', 'publish_meta', 'edit'] as const;
+export const STAGES = ['research', 'characters', 'outline', 'scene', 'rewrite', 'shotlist', 'continuity', 'publish_meta', 'edit', 'promo'] as const;
 export const stageSchema = z.enum(STAGES);
 export type Stage = z.infer<typeof stageSchema>;
 
@@ -90,6 +90,24 @@ export const publishMetaSchema = z.object({
 });
 export type PublishMeta = z.infer<typeof publishMetaSchema>;
 
+/** Kit promosi per episode: varian judul untuk A/B, teks thumbnail, komentar pin, kandidat Shorts. */
+export const promoKitSchema = z.object({
+  titles: z.array(z.string().trim().min(5).max(100)).min(2).max(5),
+  thumbnailTexts: z.array(z.string().trim().min(1).max(32)).min(1).max(4),
+  thumbnailPrompt: z.string().trim().max(600).default(''),
+  description: z.string().trim().max(3500),
+  tags: z.array(z.string().trim().max(40)).max(20),
+  hashtags: z.array(z.string().trim().max(40)).max(6),
+  pinnedComment: z.string().trim().max(500),
+  communityPost: z.string().trim().max(800),
+  shorts: z
+    .array(z.object({ sceneNo: z.coerce.number().int().positive(), title: z.string().trim().max(100), hook: z.string().trim().max(200) }))
+    .max(4)
+    .default([]),
+  bestTime: z.string().trim().max(160).default(''),
+});
+export type PromoKit = z.infer<typeof promoKitSchema>;
+
 export const OUTPUT_SCHEMAS = {
   characters: charactersOutputSchema,
   outline: outlineOutputSchema,
@@ -97,5 +115,6 @@ export const OUTPUT_SCHEMAS = {
   continuity: continuityOutputSchema,
   publish_meta: publishMetaSchema,
   edit: editProposalSchema,
+  promo: promoKitSchema,
 } as const;
 export type StructuredStage = keyof typeof OUTPUT_SCHEMAS;

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import { CATEGORIES } from '@atomo/credits';
-import { MODELS } from '@atomo/ai-gateway';
+import { AI_PROFILE_META, AI_PROFILES, CATEGORIES, detectProfile, type AIProfile } from '@atomo/credits';
+import { DEFAULT_MODEL, findModel, MODELS } from '@atomo/ai-gateway';
+import { AIModePicker } from './ai-mode';
 import { AccountPage, loadAccount } from '@/lib/account';
 import { env } from '@/lib/env';
 import { platformSecrets } from '@/lib/platform';
@@ -29,6 +30,10 @@ export default async function Provider() {
           <p className="lede">Pilih provider, model, dan tier per kategori. Mode <b>Saldo</b> memakai key kami dan memotong kredit. Mode <b>BYOK</b> memakai API key kamu sendiri: tidak memotong saldo, biaya langsung ditagih provider.</p>
         </div>
       </header>
+      <AIModePicker
+        current={detectProfile({ naskah: data.settings.naskah.tier, vo: data.settings.vo.tier, image: data.settings.image.tier, video: data.settings.video.tier })}
+        models={Object.fromEntries(AI_PROFILES.map((p) => [p, (['naskah', 'image', 'video'] as const).map((c) => findModel(DEFAULT_MODEL[c][AI_PROFILE_META[p].tiers[c]])?.label ?? '')])) as Record<AIProfile, string[]>}
+      />
       {e.AI_MOCK && <p className="note">Mode demo aktif (AI_MOCK=1): semua kategori memakai adapter tiruan, tidak ada panggilan ke provider.</p>}
       <div className="provs">
         {CATEGORIES.map((c) => (

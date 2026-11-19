@@ -1,5 +1,5 @@
 import type { ChatMessage } from './types';
-import type { CharactersOutput, ContinuityOutput, OutlineOutput, PublishMeta, ShotlistOutput } from './schemas';
+import type { CharactersOutput, ContinuityOutput, OutlineOutput, PromoKit, PublishMeta, ShotlistOutput } from './schemas';
 
 /**
  * Contoh keluaran untuk mode dev tanpa API key (AI_MOCK=1) dan untuk tes.
@@ -106,6 +106,22 @@ export const SAMPLE_SHOTLIST: ShotlistOutput = {
 
 export const SAMPLE_CONTINUITY: ContinuityOutput = { issues: [] };
 
+export const SAMPLE_PROMO: PromoKit = {
+  titles: ['Jangan Buka Pintu Kamar 7 Jam 3 Pagi', 'Siapa yang Mengetuk dari Dalam Kamar Kosong?', 'Kos Ini Menyimpan Rahasia Sejak 1998'],
+  thumbnailTexts: ['JANGAN DIJAWAB', 'KAMAR 7'],
+  thumbnailPrompt: 'Close-up of a frightened young woman in a dim corridor, a door numbered 7 behind her, cold tungsten light, empty space on the right for text',
+  description: 'Laras mendengar tiga ketukan dari kamar 7 yang sudah kosong bertahun-tahun. Dimas tahu sesuatu, tapi ia memilih diam.\n\nTonton episode berikutnya untuk tahu siapa yang mengganti gembok itu.\n\nKonten ini dibuat dengan bantuan AI.',
+  tags: ['horor indonesia', 'cerita kos angker', 'microdrama horor', 'kamar 7', 'film pendek horor'],
+  hashtags: ['#Kamar7', '#HororIndonesia', '#Microdrama'],
+  pinnedComment: 'Menurut kalian, siapa yang mengganti gembok kamar 7? Bu Wati atau Dimas?',
+  communityPost: 'Besok jam 19.00: ketukan ketiga terdengar lagi. Kalau kamu Laras, kamu buka pintunya? 🚪 Ya / Tidak',
+  shorts: [
+    { sceneNo: 1, title: 'Tiga ketukan dari kamar kosong', hook: 'Ketukan di jam 02.58 langsung membangun ketegangan dalam 3 detik pertama' },
+    { sceneNo: 2, title: 'Dinding penuh wajah dicoret merah', hook: 'Visual dinding foto mengundang pertanyaan' },
+  ],
+  bestTime: 'Kamis atau Jumat pukul 19.00–21.00 WIB, saat penonton horor paling aktif.',
+};
+
 export const SAMPLE_META: PublishMeta = {
   youtube: {
     title: 'Jangan Jawab Ketukan Ketiga | Kamar 7 Eps 3 #shorts',
@@ -141,6 +157,8 @@ export function mockResponder(req: { messages: ChatMessage[] }): string {
       return JSON.stringify(SAMPLE_CONTINUITY);
     case 'publish_meta':
       return JSON.stringify(SAMPLE_META);
+    case 'promo':
+      return JSON.stringify(SAMPLE_PROMO);
     case 'edit': {
       // Usulan contoh: percepat shot pertama dan beri transisi dip ke shot kedua.
       const clips = [...user.matchAll(/"shotId":"([^"]+)","in":([\d.]+),"out":([\d.]+)/g)];

@@ -15,7 +15,7 @@ export const MIDTRANS_URL = {
 
 export const ENABLED_PAYMENTS = ['other_qris', 'gopay', 'shopeepay', 'bca_va', 'bni_va', 'bri_va', 'permata_va', 'echannel', 'other_va'];
 
-export function snapRequest(orderId: string, pack: TopupPack, email: string, finishUrl: string) {
+export function snapRequest(orderId: string, pack: Pick<TopupPack, 'priceIdr' | 'name' | 'credits'> & { id: string }, email: string, finishUrl: string) {
   return {
     transaction_details: { order_id: orderId, gross_amount: pack.priceIdr },
     item_details: [{ id: pack.id, price: pack.priceIdr, quantity: 1, name: `Kredit ${pack.name} (${pack.credits})`.slice(0, 50) }],

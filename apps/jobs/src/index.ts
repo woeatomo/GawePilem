@@ -5,7 +5,7 @@ import { parseMessage, type JobMessage } from './messages';
 import { charref, clipPoll, clips, keyframes, voiceOver } from './handlers/media';
 import { ffmpegPoll, render } from './handlers/render';
 import { publish } from './handlers/publish';
-import { expireCredits, purgeWorkspaceMedia } from './handlers/maintenance';
+import { expireCredits, expireSubscriptions, purgeWorkspaceMedia } from './handlers/maintenance';
 import { serveMedia } from './storage';
 
 function tokenOk(header: string | null, token: string): boolean {
@@ -93,7 +93,8 @@ export default {
     }
   },
 
-  async scheduled(_c, env, ctx): Promise<void> {
-    ctx.waitUntil(expireCredits(makeCtx(env)));
+  async scheduled(c, env, ctx): Promise<void> {
+    const x = makeCtx(env);
+    ctx.waitUntil(c.cron === '0 19 * * *' ? expireCredits(x) : expireSubscriptions(x));
   },
 } satisfies ExportedHandler<Env, JobMessage>;
