@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { signIn, signUp } from '@/app/actions';
+import { PasswordInput } from '@/components/password-input';
 
 export function AuthForm({ next }: { next: string }) {
   const [mode, setMode] = useState<'in' | 'up'>('in');
@@ -22,7 +23,7 @@ export function AuthForm({ next }: { next: string }) {
       </div>
       <div>
         <label className="lbl" htmlFor="password">Kata sandi</label>
-        <input id="password" name="password" type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} minLength={8} required />
+        <PasswordInput id="password" name="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} minLength={8} required />
       </div>
       {state?.message && <p className={`note ${state.ok ? '' : 'crit'}`} role="alert">{state.message}</p>}
       <button className="btn primary" type="submit" disabled={pending} style={{ justifyContent: 'center' }}>

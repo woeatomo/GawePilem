@@ -287,3 +287,9 @@ input[type='checkbox'] { accent-color: var(--accent); width: 16px; height: 16px;
 @media (max-width: 900px) {
   .plans, .plans.three, .aimodes { grid-template-columns: 1fr; }
 }
+
+/* ---------- input kata sandi dengan tombol tampil/sembunyi ---------- */
+.pw { position: relative; }
+.pw input { padding-right: 44px; width: 100%; }
+.pw-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.pw-toggle:hover, .pw-toggle[aria-pressed='true'] { color: var(--text); background: var(--panel-2); }
